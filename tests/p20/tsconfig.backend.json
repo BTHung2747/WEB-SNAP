@@ -1,0 +1,1 @@
+{"extends":"../../tsconfig.json","compilerOptions":{"noEmit":true,"module":"ESNext","moduleResolution":"Bundler"},"include":["backend.ts","../../apps/api/src/**/*.ts","../../packages/shared/src/**/*.ts"]}

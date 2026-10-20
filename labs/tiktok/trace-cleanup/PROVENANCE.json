@@ -1,0 +1,7 @@
+{
+  "predecessorPinSHA": "75e17bec12e61335b6242d53f7887e38df2cbb09798e11319f1251e315a5a6b5",
+  "changes": "Trace best-effort lifecycle cleanup isolation and fault gate; original source/evidence unchanged",
+  "predecessor": "labs/tiktok/connect-closure-dns",
+  "vendor": "labs/tiktok/connect-poc/vendor",
+  "vendorPinSHA": "bfc235a5e7ba6fe9ad667333324039d0b0b45c490f1b4c9f41a6481687e6f863"
+}

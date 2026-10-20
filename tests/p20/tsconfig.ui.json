@@ -1,0 +1,1 @@
+{"extends":"../../apps/web/tsconfig.json","include":["browser.tsx","generation.tsx","../../apps/web/src"]}

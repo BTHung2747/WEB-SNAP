@@ -1,0 +1,23 @@
+{
+  "scope": "Production Admin/api/Nest/auth/validation/services and actual PG/Redis through same-origin browser proxy; no business fetch doubles",
+  "requestBound": 150,
+  "waitMs": 8000,
+  "cases": [
+    ["guest-session", "GET session200; guest cookie; three admin GET403; login DOM; one Session row"],
+    ["guest-write-denied", "PUT settings403 ADMIN_REQUIRED with actual guest CSRF; settings/audit unchanged"],
+    ["login-cookie", "POST login201; HttpOnly/Lax/Path cookie; dashboard/settings/campaign GET200; logged DOM"],
+    ["reload-dashboard", "browser reload retains actual cookies; no new Session; empty dashboard/queue readback matches"],
+    ["settings-valid17", "production form PUT200 strict17 keys/CSRF; queueLimit19; GET/DB/audit match"],
+    ["settings-rejected", "maxDuration601 PUT400 INVALID_REQUEST; alert/no success; settings/audit unchanged"],
+    ["admin-csrf-denied", "actual admin+guest cookies but missing CSRF yields403 CSRF_INVALID; DB/audit unchanged"],
+    ["campaign-create", "POST201 nine writable keys; disabled/image null/Date strings; one DB row/create audit; events0"],
+    ["campaign-edit", "same UUID PUT200 nine writable keys; title edited; DB/update audit"],
+    ["reload-list-delete", "reload retains edited row; production DELETE200; DB row/events0; delete audit"],
+    ["logout-cookie", "POST logout201 clear cookie; login DOM/email focus"],
+    ["logout-reload-denied", "reload three admin GET403; direct authenticated-guest write403 ADMIN_REQUIRED; DB/audit unchanged"],
+    ["narrow-keyboard", "360px native keyboard login/settings rejected+valid/close campaign focus; actual loading/error, no viewport overflow; real DB effects" ]
+  ],
+  "settingsKeys": ["maxDuration","maxBytes","maxInputBytes","analyzeTimeout","prepareTimeout","sessionTtl","releaseGrace","readyTtl","sweepSeconds","leaseTtl","retryGrace","transferMax","monthlyBytes","diskStopPercent","queueLimit","acceptJobs","enabledPlatforms"],
+  "campaignKeys": ["title","imageUrl","targetUrl","linkType","placement","enabled","startsAt","endsAt","weight"],
+  "limits": "No jobs/workers/media/egress/Internet/TLS/Secure=true/main/public proof; empty dashboard seed; narrow browser emulation not physical mobile; reduce=true capability-dependent"
+}

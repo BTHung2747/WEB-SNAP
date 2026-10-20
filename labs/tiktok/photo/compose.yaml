@@ -1,0 +1,48 @@
+name: wed-snap-tiktok-photo-lab
+x-labels: &labels
+  com.wed-snap.lab: tiktok-photo
+  com.wed-snap.run: ${PHOTO_RUN:?Required}
+services:
+  egress:
+    image: sha256:8bc0a567955111ea3cfbab2dd3b14f40a602f2d10ac987e78eb465f9d48d7f10
+    pull_policy: never
+    labels: *labels
+    networks: [private, outbound]
+    read_only: true
+    user: '65534:65534'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 64
+  photo:
+    image: sha256:31742091e95df2cc62669a6c6a9e0892dc09a34341eaeefc16959dcd4dfa417e
+    pull_policy: never
+    labels: *labels
+    networks: [private]
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.75
+    pids_limit: 96
+    ipc: private
+    environment:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONWARNINGS: ignore
+    command: [/usr/bin/timeout, --signal=KILL, 95s, python3, /app/apps/media/src/tiktok/photo_lab/parent.py]
+    volumes:
+      - type: bind
+        source: ${PHOTO_SOURCE:?Required}
+        target: /app/apps/media/src/tiktok/photo_lab
+        read_only: true
+      - type: bind
+        source: ${PHOTO_OUTPUT:?Required}
+        target: /out
+    tmpfs: ['/tmp:size=32m,uid=1000,gid=1000,noexec,nosuid']
+networks:
+  private: {internal: true, labels: *labels}
+  outbound: {labels: *labels}

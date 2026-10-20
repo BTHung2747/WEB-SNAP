@@ -1,0 +1,45 @@
+# Lab riêng P37.1. KHÔNG gộp với compose.yaml; không volume dữ liệu, không port, không DB/Redis.
+# Chạy bằng tests/p37/run-lab.ps1 (guard + provenance). Ảnh dùng cache, pull_policy never.
+name: wed-snap-tiktok-lab
+services:
+  egress:
+    image: wed-snap-egress:local
+    pull_policy: never
+    container_name: wed-snap-tiktok-lab-egress
+    networks: [private, outbound]
+    read_only: true
+    user: '65534:65534'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 64
+    restart: 'no'
+  probe:
+    image: wed-snap-media:2026.08.19
+    pull_policy: never
+    container_name: wed-snap-tiktok-lab-probe
+    networks: [private]
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    restart: 'no'
+    environment:
+      MEDIA_PROXY: http://egress:8888
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      HOME: /tmp
+    command: [python3, /p37/probe_v2.py]
+    volumes:
+      - ./tests/p37:/p37:ro
+      - ./apps/media/src/media_adapter.py:/app/infra/media_adapter.py:ro
+      - ./docs/evidence/p37-1-20261005:/out
+    tmpfs: ['/tmp:size=64m,noexec,nosuid']
+    depends_on: [egress]
+networks:
+  private: { internal: true }
+  outbound: {}

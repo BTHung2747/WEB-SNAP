@@ -1,0 +1,52 @@
+# Lab riêng P37.2 A/B (CHƯA CHẠY: cần ảnh lab có curl_cffi được duyệt, đặt tên wed-snap-media-curlcffi-lab:<tag>).
+# Tách khỏi compose.yaml và lab 37.1. Không DB/Redis/port/main mount.
+name: wed-snap-tiktok-lab-372
+x-labels: &labels
+  com.wed-snap.lab: tiktok-372
+  com.wed-snap.run: ${LAB372_RUN_ID:?Runner must supply its unique run ID}
+services:
+  egress:
+    image: wed-snap-egress:local
+    pull_policy: never
+    container_name: wed-snap-tiktok-372-egress
+    labels: *labels
+    networks: [private, outbound]
+    read_only: true
+    user: '65534:65534'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 64
+    restart: 'no'
+  probe:
+    image: wed-snap-media:2026.08.19   # đổi sang ảnh curlcffi-lab sau khi được duyệt (runner ghim ID riêng)
+    pull_policy: never
+    container_name: wed-snap-tiktok-372-probe
+    labels: *labels
+    networks: [private]
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    restart: 'no'
+    environment:
+      MEDIA_PROXY: http://egress:8888
+      AB_TARGET: ${AB_TARGET:-}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      HOME: /tmp
+    command: [python3, /p37/probe_ab.py]
+    volumes:
+      - ./tests/p37:/p37:ro
+      - type: bind
+        source: ${LAB372_OUTPUT_DIR:?Runner must supply a new evidence directory}
+        target: /out
+    tmpfs: ['/tmp:size=64m,noexec,nosuid']
+    depends_on: [egress]
+networks:
+  private: { internal: true, labels: *labels }
+  outbound: { labels: *labels }

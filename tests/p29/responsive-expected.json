@@ -1,0 +1,1 @@
+{"name":"narrow-open-campaign","expected":"At real360px native Space opens production campaign form; title gets focus, all form controls stay within viewport/document scrollWidth<=360; native Enter closes and restores opener; no campaign/audit write","scope":"Additional control declared after observed horizontal overflow during native form smoke; original13 expected unchanged"}

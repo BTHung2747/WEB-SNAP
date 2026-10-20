@@ -1,0 +1,1 @@
+{"server-invalid-window":"ISO date without timezone local-parses but server400 INVALID_REQUEST; alert and old window cleared","expired-admin-statistics":"Real logout then statisticsGET403 ADMIN_REQUIRED; login+expired error, no old rows/window","default-button":"7days button clears fields and returns actual default window"}

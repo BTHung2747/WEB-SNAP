@@ -1,0 +1,24 @@
+# Real-source smoke on test project/volumes. No fixture adapter is mounted.
+services:
+  api:
+    environment:
+      SESSION_TTL_SECONDS: 120
+      RELEASE_GRACE_SECONDS: 30
+      READY_TTL_SECONDS: 600
+      RETRY_GRACE_SECONDS: 120
+      SWEEP_SECONDS: 30
+  worker:
+    environment:
+      SESSION_TTL_SECONDS: 120
+      RELEASE_GRACE_SECONDS: 30
+      READY_TTL_SECONDS: 600
+      RETRY_GRACE_SECONDS: 120
+      SWEEP_SECONDS: 30
+    volumes: !override
+      - test_media:/media
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./apps/media/src/media_adapter.py:/app/infra/media_adapter.py:ro
+      - ./scripts:/app/scripts:ro
+      - ./docs:/samples:ro
+      - ./docs/evidence:/evidence

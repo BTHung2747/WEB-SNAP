@@ -1,0 +1,17 @@
+{
+  "sourceServices": ["api", "worker", "web", "postgres", "redis", "egress"],
+  "sourcePolicy": {"driver":"json-file","options":{"max-size":"10m","max-file":"3"}},
+  "probePolicy": {"driver":"json-file","options":{"max-size":"64k","max-file":"3"}},
+  "project": "wed-snap-log-rotation-lab",
+  "imagePin": "sha256:f2a71e620a0c6a99261a184ad39352e4bbf26954e34ccb1cddcb25ffefa115f1",
+  "records": 512,
+  "recordBytes": 1024,
+  "sequenceBytes": 524288,
+  "maxEmittedBytes": 1048576,
+  "maxCapturedBytes": 1048576,
+  "completePrefix": "P33_DONE ",
+  "writerExit": 0,
+  "waitSeconds": 30,
+  "expected": "Baseline only proves source logging unspecified, not daemon unlimited. Final source resolves six equal10m/3 string policies, all other canonical fields unchanged. Actual guarded probe uses64k/3, stdout512 records of1024 bytes plus one completion marker, drain then exit0. Docker logs --tail all must retain nonempty contiguous suffix ending512 and marker, first1 absent, fewer than512 records; no tailN filtering, daemon file access or exact file-count/diskcap assertion.",
+  "controls": "No stderr fixture lines; no HTTP/datastore/application/worker/browser/Internet. Controlled /tmp grant after actual guard, writer emits no output before grant. Gate timeout60s is harness failure, not rotation verdict."
+}

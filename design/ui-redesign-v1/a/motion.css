@@ -1,0 +1,79 @@
+/* A-only polish. All content is visible and operable without animation or JS.
+   Animation never waits for a request, replaces state logic or moves focus. */
+body.theme-a {
+  --a-motion-interaction: 180ms;
+  --a-motion-result: 220ms;
+  --a-motion-enter: 400ms;
+  --a-motion-reveal: 360ms;
+  --a-motion-ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+@keyframes a-enter {
+  from { opacity: .96; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes a-result {
+  from { transform: translateY(4px); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .theme-a .intro,
+  .theme-a .tool-card,
+  .theme-a .admin-heading {
+    animation: a-enter var(--a-motion-enter) var(--a-motion-ease) 1 backwards;
+  }
+
+  .theme-a .tool-card { animation-delay: 40ms; }
+
+  /* Typing/focus takes priority even during the first 440ms. */
+  .theme-a .tool-card:focus-within { animation: none; }
+
+  .theme-a [data-demo-output] > .empty-state,
+  .theme-a [data-demo-output] > .result-grid,
+  .theme-a [data-demo-output] > .status-block {
+    animation: a-result var(--a-motion-result) var(--a-motion-ease) 1 backwards;
+  }
+
+  /* A single visible entry per observed group. Nothing is hidden while waiting. */
+  .theme-a .a-reveal-once {
+    animation: a-enter var(--a-motion-reveal) var(--a-motion-ease) 1 backwards;
+  }
+
+  .theme-a .guide-list li.a-reveal-once:nth-child(2) { animation-delay: 35ms; }
+  .theme-a .guide-list li.a-reveal-once:nth-child(3) { animation-delay: 70ms; }
+
+  .theme-a :is(.primary-action, .secondary-action, .sample-link, .text-action) {
+    transition-property: background-color, color, border-color, transform;
+    transition-duration: var(--a-motion-interaction);
+    transition-timing-function: var(--a-motion-ease);
+  }
+
+  .theme-a :is(.primary-action, .secondary-action, .sample-link, .text-action):active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .theme-a :is(.primary-action, .secondary-action, .sample-link, .text-action):focus-visible {
+    /* The ring itself is immediate; it is never faded or delayed. */
+    outline: 3px solid var(--focus);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .theme-a :is(.primary-action, .secondary-action, .sample-link):hover:not(:disabled):not(:active) {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  .theme-a, .theme-a *, .theme-a *::before, .theme-a *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .theme-a :is(.primary-action, .secondary-action, .sample-link, .text-action):is(:hover, :active) {
+    transform: none !important;
+  }
+}

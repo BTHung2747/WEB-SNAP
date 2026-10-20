@@ -1,0 +1,13 @@
+$ErrorActionPreference='Stop'
+. (Join-Path (Get-Location).Path 'labs/tiktok/ui-source-prelaunch/wiring.ps1')
+$plan=Get-PrelaunchPlan
+$rows=@(foreach($source in @($plan.mounts.source+$plan.supervisorMirrors.source|Sort-Object -Unique)){
+ $path=[IO.Path]::GetFullPath((Join-Path (Get-Location).Path $source));$reparse=$false;$walk=$path
+ while($walk){if((Test-Path -LiteralPath $walk) -and ((Get-Item -LiteralPath $walk -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){$reparse=$true};$walk=[IO.Path]::GetDirectoryName($walk)}
+ $read=$false;$aclRead=$false;$rules=$null;$denies=$null
+ if(!$reparse){try{$f=[IO.File]::Open($path,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite);$f.Dispose();$read=$true}catch{};try{$acl=Get-Acl -LiteralPath $path;$rules=$acl.Access.Count;$denies=@($acl.Access|Where-Object AccessControlType -EQ Deny).Count;$aclRead=$true}catch{}}
+ @{source=$source;exists=(Test-Path -LiteralPath $path -PathType Leaf);canonicalWorkspacePath=$path.StartsWith((Get-Location).Path+[IO.Path]::DirectorySeparatorChar);reparse=$reparse;hostCurrentTokenRead=$read;aclRead=$aclRead;aclRuleCount=$rules;aclDenyRuleCount=$denies;containerMapping='NOT_RUN'}
+})
+$listeners=@();$port='UNKNOWN'
+try{$all=@(Get-NetTCPConnection -LocalPort 5206 -State Listen -ErrorAction Stop);$port=if($all.Count){'BUSY'}else{'NO_LISTENER_OBSERVED'};$listeners=@($all|ForEach-Object{@{port=5206;loopback=($_.LocalAddress -cin @('127.0.0.1','::1'));anyAddress=($_.LocalAddress -cin @('0.0.0.0','::'));ownerPID=$_.OwningProcess}})}catch{if($_.FullyQualifiedErrorId -like 'CmdletizationQuery_NotFound*'){$port='NO_LISTENER_OBSERVED'}}
+@{status='OBSERVED_READONLY';host=@{os=[Environment]::OSVersion.VersionString;architecture=[Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString();powershell=$PSVersionTable.PSVersion.ToString();dotnet=[Environment]::Version.ToString();utc=[DateTimeOffset]::UtcNow.ToString('o');timezone=[TimeZoneInfo]::Local.Id;trustedSkew='UNKNOWN_NO_EXTERNAL_REFERENCE'};port5206=@{status=$port;listeners=$listeners;healthGET=0};plan=@{sourceGate=$plan.sourceGate;launchReady=$plan.launchReady;images=$plan.resources.roles|Select-Object role,image,memoryMiB,pids,cpu,user,networks;totalRuntimeMiB=($plan.resources.roles|Measure-Object memoryMiB -Sum).Sum;mountCount=$plan.mounts.Count;supervisorMirrorCount=$plan.supervisorMirrors.Count;plannedControl='NOT_ALLOCATED_NO_LIVE_EVIDENCE_OR_CONTROL_PATH_CREATED';commonGuard=$plan.resources.commonGuard};mounts=$rows;sourceCalls=0;dockerCalls=0}|ConvertTo-Json -Depth 18 -Compress -EscapeHandling EscapeNonAscii

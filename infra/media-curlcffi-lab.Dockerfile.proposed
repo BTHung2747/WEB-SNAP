@@ -1,0 +1,10 @@
+# ĐỀ XUẤT CHƯA BUILD (37.2): ảnh lab riêng thêm curl_cffi cho A/B. Không thay media.Dockerfile/lockfile production.
+# Phiên bản theo extra `pin-curl-cffi` của chính yt-dlp 2026.08.19 và dải được _curlcffi.py chấp nhận (0.5.10 hoặc 0.10–0.16.x).
+# Lockfile có SHA256 chính thức từ PyPI (xác minh ngày 2026-10-05, Python 3.11.2, Linux x86_64, glibc 2.36).
+FROM wed-snap-media:2026.08.19
+USER root
+COPY infra/requirements-media-curlcffi-lab.lock /tmp/requirements-media-curlcffi-lab.lock
+RUN /opt/media/bin/pip install --no-cache-dir --require-hashes -r /tmp/requirements-media-curlcffi-lab.lock \
+    && rm -f /tmp/requirements-media-curlcffi-lab.lock
+USER 1000:1000
+# Rollback: docker image rm wed-snap-media-curlcffi-lab:local; ảnh base wed-snap-media:2026.08.19 giữ nguyên vẹn.

@@ -1,0 +1,26 @@
+# Standalone one-off lab. Do NOT merge with compose.yaml or attach data volumes.
+name: wed-snap-egress-lab
+services:
+  lab:
+    image: wed-snap-p3-egress:local
+    pull_policy: never
+    command: [python, /lab/tests/p18_egress_lab.py]
+    environment:
+      EGRESS_LAB_GUARD: wed-snap-egress-lab
+      EGRESS_LAB_SHA: ${WED_EGRESS_LAB_SHA:?Use scripts/test-egress-lab.ps1}
+      EGRESS_LAB_PHASE: ${WED_EGRESS_LAB_PHASE:?Use scripts/test-egress-lab.ps1}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+    network_mode: none
+    read_only: true
+    user: '65534:65534'
+    volumes:
+      - ./apps/egress/src/egress.py:/lab/production/egress.py:ro
+      - ./tests:/lab/tests:ro
+    tmpfs: ['/tmp:size=4m,noexec,nosuid']
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 32
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s

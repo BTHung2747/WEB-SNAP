@@ -1,0 +1,1 @@
+{"schema":"wed-source-owner-allocation-v1","ownerSeconds":341,"startupSeconds":60,"appBootstrapSeconds":20,"browserSeconds":40,"analyzeSeconds":30,"prepareSeconds":180,"finalProofSeconds":10,"cleanupSeconds":20,"sealSeconds":1,"appWorkflowFromPublishSeconds":280,"proxyWorkFromStartSeconds":320,"controllerCleanupSeconds":15}

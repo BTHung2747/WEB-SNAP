@@ -1,0 +1,6 @@
+name: wed-snap-restore
+services:
+  postgres:
+    volumes: !override [restore_postgres:/var/lib/postgresql/data]
+volumes:
+  restore_postgres: {}

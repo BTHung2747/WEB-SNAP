@@ -1,0 +1,141 @@
+{
+  "name": "aiohappyeyeballs",
+  "vendorModified": false,
+  "source": "labs/tiktok/connect-poc/vendor",
+  "pinKind": "source-file SHA256 snapshot; original dist-info RECORD preserved, not pip hash lock",
+  "license": "PSF-2.0",
+  "upstream": "https://github.com/aio-libs/aiohappyeyeballs/tree/v2.7.1",
+  "files": [
+    {
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "path": "aiohappyeyeballs-2.7.1.dist-info/licenses/LICENSE"
+    },
+    {
+      "sha256": "e68d1bf48aec9dcc2767343dedec25e12860085cba180e10bc3d3bdd031602ba",
+      "path": "aiohappyeyeballs-2.7.1.dist-info/METADATA"
+    },
+    {
+      "sha256": "2f3b3c859a9e2782f2b1a98f3e4ba1e52110a768e01339b7f53ed23c1dda22e7",
+      "path": "aiohappyeyeballs-2.7.1.dist-info/RECORD"
+    },
+    {
+      "sha256": "10612f4a984562a5cab36dfe91005ec8da093f59eb4fc649290a22e69e4360bf",
+      "path": "aiohappyeyeballs-2.7.1.dist-info/WHEEL"
+    },
+    {
+      "sha256": "f30fbf99f793ec71ad6db3c5283821a6bf0e1ac436537ff27d9097027674442b",
+      "path": "aiohappyeyeballs/__init__.py"
+    },
+    {
+      "sha256": "6a3ddc4b01c40d7f3c50c7cef5b51abbdb5fad102cce18e0f7d76910c8803863",
+      "path": "aiohappyeyeballs/_staggered.py"
+    },
+    {
+      "sha256": "eb32b7ba4aa27993fe187deb56cf16af8dfcb4fbfe63b4f5846802ca02a64bb2",
+      "path": "aiohappyeyeballs/impl.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "aiohappyeyeballs/py.typed"
+    },
+    {
+      "sha256": "ffc2661c58b1e8c78cd5eee144fec195e11a1b2f771acc06b7342fd3af33298f",
+      "path": "aiohappyeyeballs/types.py"
+    },
+    {
+      "sha256": "c051d5f1ea4632a22b0bda6aa1f4cee2a968065775e063ef55be52a5bdb91c92",
+      "path": "aiohappyeyeballs/utils.py"
+    }
+  ],
+  "version": "2.7.1",
+  "modules": [
+    {
+      "path": "src/tiktok_policy/__init__.py",
+      "sha256": "79451b87daa0c862324a026e20f6d817bb302c7e55bf2ad4a218cb5d9e83922a",
+      "from": "WED SNAP integration glue, new",
+      "fromSHA": null
+    },
+    {
+      "path": "src/tiktok_policy/batch_policy.py",
+      "sha256": "c51726cb4b60c66275aee1fcd96ac84e48f78269248283efd79c69ea005b3d21",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/batch_policy.py",
+      "fromSHA": "c51726cb4b60c66275aee1fcd96ac84e48f78269248283efd79c69ea005b3d21"
+    },
+    {
+      "path": "src/tiktok_policy/batch_validation.py",
+      "sha256": "c280db8761fe3b1544cf76d969ecc77cfddb6d1352232f466557282d1e4b76d3",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/batch_validation.py",
+      "fromSHA": "f06fb4f9acdb09aea647ecd19eab62267f4d628c36d441983c963d2294de0322"
+    },
+    {
+      "path": "src/tiktok_policy/candidate.py",
+      "sha256": "564d1889566daf2aeeff5027dbe89e7ee76b830c329a38db8ccbf4a6bc3954e6",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/candidate.py",
+      "fromSHA": "4067dbe4c6c7efa1b9b346999015c3e93398088cd0ea36dbb65c16eefe806fa8"
+    },
+    {
+      "path": "src/tiktok_policy/dns_admission.py",
+      "sha256": "c672d31f45658406c4761f4b52e4d8d396045fe3fbd379300d751c76d96e642a",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/dns_admission.py",
+      "fromSHA": "e708584563aa3366d09c7092a6f6b0296200519178ff4d8bc625d207c12656a0"
+    },
+    {
+      "path": "src/tiktok_policy/dns_counts.py",
+      "sha256": "31cf79bda52587187acd89ad2965069761f6b03f6b890d81129dcfc79fed9ed3",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/dns_counts.py",
+      "fromSHA": "31cf79bda52587187acd89ad2965069761f6b03f6b890d81129dcfc79fed9ed3"
+    },
+    {
+      "path": "src/tiktok_policy/dns_diagnostic.py",
+      "sha256": "1a7a124ddbe4a53740b96fe56f613c7475acd3741651872f1bce69a8c11480a0",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/dns_diagnostic.py",
+      "fromSHA": "21cc55ced540b584597e9fede051a10c379b8fa2dbe3ca7a29822026eb118a5c"
+    },
+    {
+      "path": "src/tiktok_policy/dns_helper.py",
+      "sha256": "5ed38c98b9e52f4e1f05ca560965d5e081505c1de9a245757017707572859487",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/dns_helper.py",
+      "fromSHA": "3d7682ae9bba0702d24d913240142a316f2af0faf2e9e4d2af175c9938d28bad"
+    },
+    {
+      "path": "src/tiktok_policy/dns_ipc.py",
+      "sha256": "0f45720271c4d057c42eea953b3a5007af5f47f9974db9ff586714e8762386d5",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/dns_ipc.py",
+      "fromSHA": "af57a6060f197c3b50c5d3077a59a786a1f0110b4767467a75c989c40b531bbd"
+    },
+    {
+      "path": "src/tiktok_policy/operation_coverage.py",
+      "sha256": "e11b00dab0ee9f298f6cff9f549a4f2b5053d6b54e645296b9a31d26fe0baadd",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/operation_coverage.py",
+      "fromSHA": "e11b00dab0ee9f298f6cff9f549a4f2b5053d6b54e645296b9a31d26fe0baadd"
+    },
+    {
+      "path": "src/tiktok_policy/ownership.py",
+      "sha256": "2a5b1cd76ec9094d24f4cc8d55f3b88d6933c58e60464e799fa47bec7e7ca05e",
+      "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/ownership.py",
+      "fromSHA": "a48f4c9f1bcdc97635e489c3929159925125613339cbdac50df819d49970dfeb"
+    },
+    {
+      "path": "src/tiktok_policy/runtime.py",
+      "sha256": "0dafdd0d9fa70863d120124df6dd9266e910b5f1e24bc33ed586d670e4384ff8",
+      "from": "WED SNAP integration glue, new",
+      "fromSHA": null
+    },
+    {
+      "fromSHA": null,
+      "path": "src/tiktok_policy/control.py",
+      "sha256": "c1113fb11d0b00a0ddd3510bafcde6ecbf0e3573cecb05e61990d20bdc184d3f",
+      "from": "WED SNAP phase proof glue3b, new"
+    }
+  ],
+  "lateCompletion20261015": {
+    "newModules": [
+      "src/tiktok_policy/control.py",
+      "apps/media/src/tiktok/photo_proxy.py",
+      "apps/worker/src/proxy-phase.ts"
+    ],
+    "scope": "parent-authenticated per-phase completion; no source authority",
+    "publicAPIChanged": false,
+    "vendorChanged": false
+  }
+}

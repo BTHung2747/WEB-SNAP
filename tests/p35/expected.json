@@ -1,0 +1,29 @@
+{
+  "baseline": "Automatic boot/timer entrypoint proof missing; not an observed runtime FAIL. No rerun of historical retention matrices.",
+  "fixtureSweepSeconds": 2,
+  "sourceDefaultSeconds": 30,
+  "concurrency": 1,
+  "eligibleSeed": 1001,
+  "batchDeletes": [500, 500, 1],
+  "remaining": [501, 1, 0],
+  "minBlockedWindowMs": 4250,
+  "samplePeriodMs": 50,
+  "waitDeadlineMs": 10000,
+  "lockDeadlineMs": 45000,
+  "shutdownDeadlineMs": 5000,
+  "childArgv": ["--require", "tsx/cjs", "apps/worker/src/main.ts"],
+  "cases": [
+    "effective-fixture-empty-preflight",
+    "startup500-before-worker-ready",
+    "worker-ready-concurrency1-protected-state",
+    "periodic-delete-blocked-after-ready",
+    "periodic-window-nonoverlap",
+    "timer500-retained1",
+    "timer1-retained0",
+    "all-protected-controls-preserved",
+    "sigterm-idle-child-exit0",
+    "child-pg-redis-worker-connections-closed",
+    "own-fixture-media-stores-cleanup"
+  ],
+  "controls": "PG readback/real row-table locks, no parent sweep/helper/main import; no Date/timer/BullMQ/Prisma/verdict doubles. 2s lab cadence is not source default30 or SLA. Empty media/job/lease/ticket/outbox/queue only."
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "wed-snap-374-network-proof-v1",
+  "slot": "current",
+  "label": "",
+  "observedUtc": "",
+  "ownLabEgressVerified": false,
+  "verificationMethod": "",
+  "routeToken": "",
+  "evidenceSHA256": "",
+  "note": "Supply externally verified outbound proof for the active lab egress path. A Wi-Fi name or an unchecked boolean is not proof. Keep private raw IP/routing evidence outside the public evidence package; routeToken must be an opaque, privately salted fingerprint/reference, not a raw IP or unsalted IP hash. Runner validates the receipt, not its external provenance."
+}

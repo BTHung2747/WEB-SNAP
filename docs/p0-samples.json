@@ -1,0 +1,6 @@
+[
+  {"name":"youtube-bbb","platform":"youtube","url":"https://www.youtube.com/watch?v=YE7VzlLtp-4"},
+  {"name":"youtube-spring","platform":"youtube","url":"https://www.youtube.com/watch?v=WhWc3b3KhnY"},
+  {"name":"youtube-coffee","platform":"youtube","url":"https://www.youtube.com/watch?v=PVGeM40dABA"},
+  {"name":"youtube-invalid","platform":"youtube","url":"https://www.youtube.com/watch?v=xxxxxxxxxxx","expected":"unavailable"}
+]

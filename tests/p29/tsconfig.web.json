@@ -1,0 +1,1 @@
+{"extends":"../../apps/web/tsconfig.json","compilerOptions":{"noEmit":true},"include":["browser.tsx","vite.config.ts","../../apps/web/src/**/*"],"exclude":[]}

@@ -1,0 +1,838 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "SessionController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": []
+      }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "SessionController_createSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "429": {
+            "description": "RATE_LIMITED: vượt hạn mức",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "description": "Tạo mới tối đa 10 phiên/60 giây/IP trước insert; cookie phiên hợp lệ không dùng hạn mức tạo."
+      }
+    },
+    "/api/v1/jobs/analyze": {
+      "post": {
+        "operationId": "JobsController_analyze",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Tác vụ được tiếp nhận; poll GET /jobs/:id để đọc kết quả",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "jobId"
+                  ],
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED hoặc QUEUE_FULL; phân biệt bằng error.code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED",
+                            "QUEUE_FULL"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Tạo tác vụ phân tích; 202, thuộc phiên, không tải sẵn media",
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.\n10 yêu cầu/60 giây/phiên và 30/60 giây/IP. RATE_LIMITED khác QUEUE_FULL (admission)."
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "operationId": "JobsController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/preview": {
+      "get": {
+        "operationId": "JobsController_preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/prepare": {
+      "post": {
+        "operationId": "JobsController_prepare",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "itemId",
+                  "formatId",
+                  "idempotencyKey"
+                ],
+                "properties": {
+                  "itemId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "formatId": {
+                    "type": "string"
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Tác vụ được tiếp nhận; poll GET /jobs/:id để đọc kết quả",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "jobId"
+                  ],
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "state": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/jobs/{id}/heartbeat": {
+      "post": {
+        "operationId": "JobsController_heartbeat",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/jobs/{id}/release": {
+      "post": {
+        "operationId": "JobsController_release",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session. Beacon release cũng nhận csrf trong JSON body."
+      }
+    },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "operationId": "JobsController_cancel",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/jobs/{id}/download-ticket": {
+      "post": {
+        "operationId": "JobsController_ticket",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "429": {
+            "description": "RATE_LIMITED: vượt hạn mức",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.\nCấp tối đa 10 ticket/60 giây/phiên và 5 ticket/60 giây/job; một ticket dùng nhiều Range."
+      }
+    },
+    "/api/v1/downloads/{ticket}": {
+      "get": {
+        "operationId": "DownloadsController_download",
+        "parameters": [
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "bytes=0-99"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP4; HEAD chỉ trả headers",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Một byte Range hợp lệ; Content-Range và Accept-Ranges",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có phiên hợp lệ"
+          },
+          "410": {
+            "description": "Ticket/tệp hết hạn hoặc không thuộc phiên"
+          },
+          "416": {
+            "description": "Range không hợp lệ; Content-Range: bytes */size"
+          },
+          "429": {
+            "description": "Vượt rate limit"
+          },
+          "503": {
+            "description": "Vượt ngân sách truyền mới"
+          }
+        },
+        "summary": "MP4 qua máy chủ; Range 206/416; tạo transfer lease trước mở tệp",
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ads": {
+      "get": {
+        "operationId": "AdsController_ads",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ad-events": {
+      "post": {
+        "operationId": "AdsController_adEvent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "campaignId",
+                  "type"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "campaignId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "type": {
+                    "enum": [
+                      "impression",
+                      "click"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/admin/login": {
+      "post": {
+        "operationId": "AdminController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "429": {
+            "description": "RATE_LIMITED: vượt hạn mức",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "RATE_LIMITED"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.\n5 lần đăng nhập/300 giây/IP, dùng chung qua nhiều cookie phiên."
+      }
+    },
+    "/api/v1/admin/logout": {
+      "post": {
+        "operationId": "AdminController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "operationId": "AdminController_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "operationId": "AdminController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "AdminController_saveSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Limits object; see docs/API.md for exact bounded fields"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": [],
+            "adminCookie": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/admin/campaigns": {
+      "get": {
+        "operationId": "AdminController_campaigns",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AdminController_createCampaign",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "targetUrl",
+                  "startsAt",
+                  "endsAt",
+                  "weight",
+                  "enabled",
+                  "placement",
+                  "linkType"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "targetUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "weight": {
+                    "type": "integer"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "placement": {
+                    "enum": [
+                      "banner",
+                      "sponsor"
+                    ]
+                  },
+                  "linkType": {
+                    "enum": [
+                      "sponsored",
+                      "affiliate"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": [],
+            "adminCookie": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    },
+    "/api/v1/admin/campaigns/{id}": {
+      "put": {
+        "operationId": "AdminController_updateCampaign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": [],
+            "adminCookie": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      },
+      "delete": {
+        "operationId": "AdminController_deleteCampaign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookie": [],
+            "csrf": [],
+            "adminCookie": []
+          }
+        ],
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session."
+      }
+    }
+  },
+  "info": {
+    "title": "WED SNAP",
+    "description": "",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ws_session"
+      },
+      "csrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-csrf-token"
+      },
+      "adminCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ws_admin"
+      }
+    },
+    "schemas": {}
+  }
+}

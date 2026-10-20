@@ -1,0 +1,4 @@
+const http=require('node:http'),fs=require('node:fs');
+if(process.env.P30_GUARD!=='wed-snap-ad-statistics-lab'||!fs.existsSync('/tmp/p30/ready'))throw Error('Guard');
+const r=http.request({hostname:'127.0.0.1',port:3000,path:'/__p30/cleanup',method:'POST',agent:false},res=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{if(res.statusCode!==200||JSON.parse(b).ok!==true)throw Error('Own cleanup failed');const until=Date.now()+8000;const t=setInterval(()=>{if(fs.existsSync('/tmp/p30/closed')){clearInterval(t);console.log('PASS own fixtures/settings/keys restored; HTTP/core clients closed')}else if(Date.now()>=until){clearInterval(t);throw Error('Close timeout')}},100);});});r.setTimeout(5000,()=>r.destroy(Error('Deadline')));r.on('error',()=>{console.error('FAIL cleanup connection');process.exitCode=1});r.end();
+

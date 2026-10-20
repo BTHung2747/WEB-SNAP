@@ -1,0 +1,4791 @@
+{
+  "components": {
+    "schemas": {
+      "AnalyzeAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "type": "object"
+      },
+      "AnalyzeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "description": "HTTPS URL được validateUrl kiểm tra: không userinfo, port hoặc fragment; host platform allowlist và enabledPlatforms. YouTube playlist/live bị UNSUPPORTED_CONTENT; ID video phải hợp lệ. Không có csrf trong strict body, dùng header.",
+            "format": "uri",
+            "maxLength": 2048,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "ApiError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "Mã HTTP ổn định; chỉ error.code, không message/stack/path. Khác errorCode trên job failed.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "CsrfFallbackBody": {
+        "additionalProperties": true,
+        "description": "Body tùy chọn khi đã có header. Nếu không có x-csrf-token, bắt buộc csrf body hợp lệ; header có giá trị được ưu tiên. Endpoint này không parse strict body.",
+        "properties": {
+          "csrf": {
+            "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DownloadTicket": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresIn": {
+            "description": "Giây transferMax từ settings hiện hành; tối đa1800, không phải token một lần.",
+            "maximum": 1800,
+            "minimum": 5,
+            "type": "integer"
+          },
+          "url": {
+            "description": "Relative native link, gắn cùng cookie; nhiều Range hợp lệ dùng cùng ticket.",
+            "pattern": "^/api/v1/downloads/[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiresIn"
+        ],
+        "type": "object"
+      },
+      "JobStatus": {
+        "additionalProperties": false,
+        "description": "Metadata lựa chọn chưa prepare có deadline cố định <=120000ms từ metadataAcceptedAt; now >= deadline hết hạn. Hạn nguồn tin cậy sớm hơn giảm deadline; heartbeat/updatedAt/ownerUntil không renew. Selectable legacy thiếu mốc bị expired. Prepare đã nhận trước hạn tiếp tục theo lifecycle riêng. Python hiện không trả signed URL expiry, không parse query.",
+        "properties": {
+          "duration": {
+            "nullable": true,
+            "type": "number"
+          },
+          "errorCode": {
+            "description": "Lỗi nghiệp vụ worker/job, ví dụ SOURCE_TIMEOUT/LIMIT_EXCEEDED/WORKER_INTERRUPTED/JOB_EXPIRED; có thể trong payload200, không phải HTTP error envelope.",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "description": "Luôn [] nếu failed/cancelled/expired; metadata expired trả410 thay vì cung cấp lựa chọn.",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            },
+            "type": "array"
+          },
+          "metadataAcceptedAt": {
+            "description": "ISO timestamp processor chấp nhận analyze dưới khóa; null trước khi có metadata hoặc legacy.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "metadataExpiresAt": {
+            "description": "Metadata lựa chọn chưa prepare có deadline cố định <=120000ms từ metadataAcceptedAt; now >= deadline hết hạn. Hạn nguồn tin cậy sớm hơn giảm deadline; heartbeat/updatedAt/ownerUntil không renew. Selectable legacy thiếu mốc bị expired. Prepare đã nhận trước hạn tiếp tục theo lifecycle riêng. Python hiện không trả signed URL expiry, không parse query.",
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "temporary"
+            ],
+            "type": "string"
+          },
+          "previewUrl": {
+            "description": "Relative /api/v1/jobs/{id}/preview khi có title và state không terminal; không đảm bảo preview file tồn tại.",
+            "nullable": true,
+            "type": "string"
+          },
+          "serverMeaning": {
+            "enum": [
+              "server_finished không chứng minh tệp đã lưu vào thiết bị"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "analyzing",
+              "selectable",
+              "queued",
+              "preparing",
+              "ready",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "errorCode",
+          "title",
+          "duration",
+          "metadataAcceptedAt",
+          "metadataExpiresAt",
+          "items",
+          "previewUrl",
+          "mode",
+          "serverMeaning"
+        ],
+        "type": "object"
+      },
+      "MediaFormat": {
+        "additionalProperties": false,
+        "properties": {
+          "height": {
+            "nullable": true,
+            "type": "number"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "video"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "size": {
+            "description": "Byte metadata từ nguồn; null khi chưa biết, không phải byte tải đã chứng nhận.",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "size"
+        ],
+        "type": "object"
+      },
+      "MediaItem": {
+        "additionalProperties": false,
+        "properties": {
+          "formats": {
+            "description": "JSON formats từ adapter; không công bố URL media/source.",
+            "items": {
+              "$ref": "#/components/schemas/MediaFormat"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Worker hiện tạo video item, chưa adapter ảnh.",
+            "enum": [
+              "video"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "formats"
+        ],
+        "type": "object"
+      },
+      "OkResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
+      "PrepareAccepted": {
+        "additionalProperties": false,
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "state": {
+            "description": "Thông thường queued; retry giữ state thực của cùng job/key/format (kể cả terminal khi có prepareKey và owner còn hợp lệ). Không ép mọi202 thành queued.",
+            "enum": [
+              "analyzing",
+              "selectable",
+              "queued",
+              "preparing",
+              "ready",
+              "failed",
+              "cancelled",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "state"
+        ],
+        "type": "object"
+      },
+      "PrepareInput": {
+        "additionalProperties": false,
+        "properties": {
+          "formatId": {
+            "maxLength": 80,
+            "pattern": "^[\\w-]+(?:\\+[\\w-]+)?$",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "itemId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "formatId",
+          "idempotencyKey"
+        ],
+        "type": "object"
+      },
+      "SessionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "contact": {
+            "description": "CONTACT_EMAIL hoặc null; env không có validation email tại endpoint này.",
+            "nullable": true,
+            "type": "string"
+          },
+          "csrf": {
+            "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "heartbeatSeconds": {
+            "enum": [
+              15
+            ],
+            "type": "integer"
+          },
+          "productName": {
+            "maxLength": 60,
+            "type": "string"
+          },
+          "supported": {
+            "description": "enabledPlatforms sau lọc VERIFIED_PLATFORMS; không khẳng định tất cả nền tảng đã bật/kiểm chứng.",
+            "items": {
+              "enum": [
+                "youtube",
+                "tiktok",
+                "facebook",
+                "x"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "verified": {
+            "description": "Danh sách env VERIFIED_PLATFORMS; không tự suy thành chứng nhận adapter.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "csrf",
+          "supported",
+          "verified",
+          "contact",
+          "productName",
+          "heartbeatSeconds"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "adminCookie": {
+        "in": "cookie",
+        "name": "ws_admin",
+        "type": "apiKey"
+      },
+      "cookie": {
+        "in": "cookie",
+        "name": "ws_session",
+        "type": "apiKey"
+      },
+      "csrf": {
+        "in": "header",
+        "name": "x-csrf-token",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "",
+    "title": "WED SNAP",
+    "version": "0.1.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/ad-events": {
+      "post": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdsController_adEvent",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "campaignId": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "id": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": [
+                      "impression",
+                      "click"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "campaignId",
+                  "type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns": {
+      "get": {
+        "operationId": "AdminController_campaigns",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdminController_createCampaign",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "endsAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "linkType": {
+                    "enum": [
+                      "sponsored",
+                      "affiliate"
+                    ]
+                  },
+                  "placement": {
+                    "enum": [
+                      "banner",
+                      "sponsor"
+                    ]
+                  },
+                  "startsAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "targetUrl": {
+                    "format": "uri",
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "title",
+                  "targetUrl",
+                  "startsAt",
+                  "endsAt",
+                  "weight",
+                  "enabled",
+                  "placement",
+                  "linkType"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": [],
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/campaigns/{id}": {
+      "delete": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdminController_deleteCampaign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": [],
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdminController_updateCampaign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": [],
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "operationId": "AdminController_dashboard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/login": {
+      "post": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.\n5 lần đăng nhập/300 giây/IP, dùng chung qua nhiều cookie phiên.",
+        "operationId": "AdminController_login",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "format": "email",
+                    "type": "string"
+                  },
+                  "password": {
+                    "minLength": 12,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "properties": {
+                        "code": {
+                          "enum": [
+                            "RATE_LIMITED"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RATE_LIMITED: vượt hạn mức"
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/logout": {
+      "post": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdminController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "operationId": "AdminController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "description": "Origin phải khớp APP_ORIGIN; x-csrf-token từ GET /api/v1/session.",
+        "operationId": "AdminController_saveSettings",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "description": "Limits object; see docs/API.md for exact bounded fields",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "adminCookie": [],
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/ads": {
+      "get": {
+        "operationId": "AdsController_ads",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/downloads/{ticket}": {
+      "get": {
+        "description": "Cookie + ticket cùng phiên, rate60request/60s/phiên trước HEAD/GET branch. GET khóa job→asset→budget, tạo lease và reserve trước open file. Range hợp lệ dùng lại ticket/tài sản nhưng không kéo dài absolute transferDeadline. server_finished chỉ kết thúc stream máy chủ, không chứng minh lưu thiết bị. Lỗi sau headers có thể ngắt stream; không luôn có error JSON.",
+        "operationId": "DownloadsController_download",
+        "parameters": [
+          {
+            "description": "Ticket random64hex gắn cookie; không UUID.",
+            "in": "path",
+            "name": "ticket",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Một bytes=start-end, start- hoặc -suffix; không multipart. Syntax/biên sai416, end quásize được clip.",
+            "example": "bytes=0-99",
+            "in": "header",
+            "name": "Range",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Full MP4",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Byte range",
+                "schema": {
+                  "enum": [
+                    "bytes"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Stream private, no-store",
+                "schema": {
+                  "enum": [
+                    "private, no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Tên cố định không từ user",
+                "schema": {
+                  "enum": [
+                    "attachment; filename=\"wed-snap-video.mp4\""
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Số byte representation được chọn (HEAD không gửi byte)",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "Content-Type": {
+                "description": "MP4",
+                "schema": {
+                  "enum": [
+                    "video/mp4"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Một Range MP4",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Byte range",
+                "schema": {
+                  "enum": [
+                    "bytes"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Stream private, no-store",
+                "schema": {
+                  "enum": [
+                    "private, no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "description": "Tên cố định không từ user",
+                "schema": {
+                  "enum": [
+                    "attachment; filename=\"wed-snap-video.mp4\""
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Số byte representation được chọn (HEAD không gửi byte)",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "Content-Range": {
+                "description": "bytes start-end/size",
+                "schema": {
+                  "pattern": "^bytes [0-9]+-[0-9]+/[0-9]+$",
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "MP4",
+                "schema": {
+                  "enum": [
+                    "video/mp4"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": " Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "416": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_RANGE"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "undefined",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_RANGE"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "RATE_LIMITED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR",
+                                "INVALID_ASSET_PATH"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR",
+              "INVALID_ASSET_PATH"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "CAPACITY_UNAVAILABLE"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "CAPACITY_UNAVAILABLE: từ chối nhận công việc hoặc reservation mới theo capacity/budget.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "CAPACITY_UNAVAILABLE"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "MP4 qua máy chủ, full hoặc một byte Range",
+        "tags": [
+          "public"
+        ],
+        "x-transfer-reservation": true
+      },
+      "head": {
+        "description": "Express implicit HEAD dùng GET controller. Cookie/ticket/Range/rate và availability/expiry được kiểm tra trước end; không tạo lease, không reserve, không kiểm budget503, không open/stat file. HEAD không body cả lỗi, không Content-Disposition. Cache-Control no-store đến từ global middleware, không private header của GET stream.",
+        "operationId": "DownloadsController_download_HEAD",
+        "parameters": [
+          {
+            "description": "Ticket random64hex gắn cookie; không UUID.",
+            "in": "path",
+            "name": "ticket",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Một bytes=start-end, start- hoặc -suffix; không multipart. Syntax/biên sai416, end quásize được clip.",
+            "example": "bytes=0-99",
+            "in": "header",
+            "name": "Range",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "HEAD full, không body",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Byte range",
+                "schema": {
+                  "enum": [
+                    "bytes"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Global middleware no-store; HEAD không set private stream header",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Số byte representation được chọn (HEAD không gửi byte)",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "Content-Type": {
+                "description": "MP4",
+                "schema": {
+                  "enum": [
+                    "video/mp4"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "HEAD range, không body",
+            "headers": {
+              "Accept-Ranges": {
+                "description": "Byte range",
+                "schema": {
+                  "enum": [
+                    "bytes"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Global middleware no-store; HEAD không set private stream header",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Số byte representation được chọn (HEAD không gửi byte)",
+                "schema": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "Content-Range": {
+                "description": "bytes start-end/size",
+                "schema": {
+                  "pattern": "^bytes [0-9]+-[0-9]+/[0-9]+$",
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "description": "MP4",
+                "schema": {
+                  "enum": [
+                    "video/mp4"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": " Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation). HEAD không body, mã là metadata của nhánh lỗi nội bộ; không có error-code header.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED"
+            ]
+          },
+          "410": {
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint. HEAD không body, mã là metadata của nhánh lỗi nội bộ; không có error-code header.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "416": {
+            "description": "undefined HEAD không body, mã là metadata của nhánh lỗi nội bộ; không có error-code header.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_RANGE"
+            ]
+          },
+          "429": {
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code. HEAD không body, mã là metadata của nhánh lỗi nội bộ; không có error-code header.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới. HEAD không body, mã là metadata của nhánh lỗi nội bộ; không có error-code header.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Implicit HEAD qua GET handler hiện có",
+        "tags": [
+          "public"
+        ],
+        "x-implicit-head-of": "DownloadsController_download",
+        "x-transfer-reservation": false
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Không yêu cầu cookie. Health thực gọi DB SELECT1 và Redis PING; lỗi backend trả500 safe. Generator chỉ quét metadata, không gọi endpoint này.",
+        "operationId": "SessionController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "DB/Redis phản hồi; ok=true",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": " Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [],
+        "summary": "Health DB và Redis",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/jobs/analyze": {
+      "post": {
+        "description": "202 chỉ chấp nhận job, không chứng nhận analyze/tải thành công. Rate10/60s/phiên,30/60s/IP; QUEUE_FULL admission khác RATE_LIMITED. Source URL được validate và chỉ platform enabled được nhận.\nCookie + Origin đúng APP_ORIGIN + x-csrf-token; request body strict.",
+        "operationId": "JobsController_analyze",
+        "parameters": [
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc: strict analyze/prepare body không nhận field csrf.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": true,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeAccepted"
+                }
+              }
+            },
+            "description": "Job phân tích được nhận",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INVALID_URL",
+                                "UNSUPPORTED_PLATFORM",
+                                "UNSUPPORTED_CONTENT",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INVALID_URL",
+              "UNSUPPORTED_PLATFORM",
+              "UNSUPPORTED_CONTENT",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "RATE_LIMITED",
+                                "QUEUE_FULL"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED",
+              "QUEUE_FULL"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "CAPACITY_UNAVAILABLE"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "CAPACITY_UNAVAILABLE: từ chối nhận công việc hoặc reservation mới theo capacity/budget.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "CAPACITY_UNAVAILABLE"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "summary": "Tiếp nhận analyze",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "description": "Metadata lựa chọn chưa prepare có deadline cố định <=120000ms từ metadataAcceptedAt; now >= deadline hết hạn. Hạn nguồn tin cậy sớm hơn giảm deadline; heartbeat/updatedAt/ownerUntil không renew. Selectable legacy thiếu mốc bị expired. Prepare đã nhận trước hạn tiếp tục theo lifecycle riêng. Python hiện không trả signed URL expiry, không parse query. Job terminal thông thường có thể200 với items=[]; chỉ metadata expired guard trả410 tại status, không ép mọi failed/cancelled/expired thành410.",
+        "operationId": "JobsController_status",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatus"
+                }
+              }
+            },
+            "description": "Payload state/items/nullable metadata; không token/path/source/cleanup marker",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Trạng thái và metadata của job thuộc phiên",
+        "tags": [
+          "public"
+        ],
+        "x-metadata-ttl": {
+          "acceptedPrepareContinues": true,
+          "expiresWhen": "now >= metadataExpiresAt",
+          "heartbeatRenews": false,
+          "legacyMissing": "expired",
+          "maxAgeMs": 120000,
+          "origin": "metadataAcceptedAt",
+          "trustedEarlierSourceExpiry": true
+        }
+      }
+    },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "description": "Normal cancel201, lặp trên cancelled giữ201 không renewupdatedAt. Metadata expired (kể cả cancel đầu tại120000ms) commit rồi410 JOB_EXPIRED. Yêu cầu hủy không đồng nghĩa cleanup đã xong; transfer đang chạy được duy trì.\nBắt buộc cookie + Origin và token CSRF qua header hoặc csrf JSON body; header có giá trị ưu tiên. Security cookie-only alternative chỉ hợp lệ khi body có csrf; OpenAPI3 không biểu diễn ràng buộc security/body chéo, không được bỏ CSRF.",
+        "operationId": "JobsController_cancel",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc header này HOẶC csrf trong JSON body; không phải CSRF tùy chọn.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsrfFallbackBody"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Đã nhận cancel; ok=true",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Yêu cầu hủy job",
+        "tags": [
+          "public"
+        ],
+        "x-csrf-alternatives": [
+          "header:x-csrf-token",
+          "body:csrf"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/download-ticket": {
+      "post": {
+        "description": "Chỉ ready + available + chưa cancel + asset chưa hết hạn.10ticket/60s/phiên,5/60s/job. Không tạo transfer lease/reservation tại bước cấp ticket; cùng ticket có thể dùng nhiều Range. expiresIn từ transferMax settings, không chứng minh tệp đã lưu.\nBắt buộc cookie + Origin và token CSRF qua header hoặc csrf JSON body; header có giá trị ưu tiên. Security cookie-only alternative chỉ hợp lệ khi body có csrf; OpenAPI3 không biểu diễn ràng buộc security/body chéo, không được bỏ CSRF.",
+        "operationId": "JobsController_ticket",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc header này HOẶC csrf trong JSON body; không phải CSRF tùy chọn.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsrfFallbackBody"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadTicket"
+                }
+              }
+            },
+            "description": "Relative url và expiresIn giây",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "RATE_LIMITED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Cấp native download link gắn phiên",
+        "tags": [
+          "public"
+        ],
+        "x-csrf-alternatives": [
+          "header:x-csrf-token",
+          "body:csrf"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/heartbeat": {
+      "post": {
+        "description": "Gia hạn ownerUntil và bỏ releaseAt; không gia hạn metadata deadline. Owner/terminal/cancel/metadata expiry trả410.\nBắt buộc cookie + Origin và token CSRF qua header hoặc csrf JSON body; header có giá trị ưu tiên. Security cookie-only alternative chỉ hợp lệ khi body có csrf; OpenAPI3 không biểu diễn ràng buộc security/body chéo, không được bỏ CSRF.",
+        "operationId": "JobsController_heartbeat",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc header này HOẶC csrf trong JSON body; không phải CSRF tùy chọn.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsrfFallbackBody"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Đã nhận heartbeat; ok=true",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Gia hạn owner job còn hợp lệ",
+        "tags": [
+          "public"
+        ],
+        "x-csrf-alternatives": [
+          "header:x-csrf-token",
+          "body:csrf"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/prepare": {
+      "post": {
+        "description": "Metadata lựa chọn chưa prepare có deadline cố định <=120000ms từ metadataAcceptedAt; now >= deadline hết hạn. Hạn nguồn tin cậy sớm hơn giảm deadline; heartbeat/updatedAt/ownerUntil không renew. Selectable legacy thiếu mốc bị expired. Prepare đã nhận trước hạn tiếp tục theo lifecycle riêng. Python hiện không trả signed URL expiry, không parse query. UUID itemId và idempotencyKey, formatId max80/pattern; strict body. Same key/format giữ job; format xung đột409. Metadata expired chưa nhận prepare410; disk/admission503 có thể xảy ra trước TTL check; tối đa1prepare/phiên và queue20 theo settings.\nCookie + Origin đúng APP_ORIGIN + x-csrf-token; request body strict.",
+        "operationId": "JobsController_prepare",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc: strict analyze/prepare body không nhận field csrf.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": true,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepareAccepted"
+                }
+              }
+            },
+            "description": "Job được tiếp nhận hoặc retry job/key/format hiện có",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "FORMAT_UNAVAILABLE",
+                                "UNSUPPORTED_PLATFORM",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "FORMAT_UNAVAILABLE",
+              "UNSUPPORTED_PLATFORM",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "IDEMPOTENCY_CONFLICT"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "IDEMPOTENCY_CONFLICT: key/format xung đột với job đã chọn.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "IDEMPOTENCY_CONFLICT"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "RATE_LIMITED",
+                                "QUEUE_FULL"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED",
+              "QUEUE_FULL"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "CAPACITY_UNAVAILABLE"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "CAPACITY_UNAVAILABLE: từ chối nhận công việc hoặc reservation mới theo capacity/budget.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "CAPACITY_UNAVAILABLE"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          }
+        ],
+        "summary": "Chọn format và nhận prepare idempotent",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/preview": {
+      "get": {
+        "description": "Metadata expiry/cancelled/failed/expired bị410 dưới khóa. Job tồn tại nhưng open preview không thành công trả404 body rỗng; own/notfound trả404 JSON JOB_NOT_FOUND. PreviewUrl trong status không bảo đảm file tồn tại.",
+        "operationId": "JobsController_preview",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Ảnh nhận dạng theo byte đầu, không JSON",
+            "headers": {
+              "Cache-Control": {
+                "description": "Preview private, no-store",
+                "schema": {
+                  "enum": [
+                    "private, no-store"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền. Nếu job thuộc phiên nhưng không mở được preview: body rỗng, không JSON error.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_EXPIRED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "JOB_EXPIRED: metadata/owner/ticket/tệp không còn hợp lệ theo guard endpoint.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_EXPIRED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR",
+                                "INVALID_ASSET_PATH"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR",
+              "INVALID_ASSET_PATH"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Preview PNG/JPEG thuộc job",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/v1/jobs/{id}/release": {
+      "post": {
+        "description": "Chỉ đặt releaseAt theo releaseGrace, không xóa ngay/không tự reject metadata expiry bằng410. Best-effort beacon có thể dùng csrf body. Transfer đang chạy độc lập.\nBắt buộc cookie + Origin và token CSRF qua header hoặc csrf JSON body; header có giá trị ưu tiên. Security cookie-only alternative chỉ hợp lệ khi body có csrf; OpenAPI3 không biểu diễn ràng buộc security/body chéo, không được bỏ CSRF.",
+        "operationId": "JobsController_release",
+        "parameters": [
+          {
+            "description": "UUID job; own() kiểm validation và cookie ownership trước thao tác.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Phải bằng APP_ORIGIN, kể cả body CSRF fallback.",
+            "in": "header",
+            "name": "Origin",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bắt buộc header này HOẶC csrf trong JSON body; không phải CSRF tùy chọn.",
+            "in": "header",
+            "name": "x-csrf-token",
+            "required": false,
+            "schema": {
+              "description": "CSRF từ GET /session, gắn cookie phiên; không phải cookie value.",
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsrfFallbackBody"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Đã nhận release; ok=true",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INVALID_REQUEST",
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Validation/request/URL/format/platform bị từ chối theo error.code. Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INVALID_REQUEST",
+              "INTERNAL_ERROR"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "SESSION_REQUIRED",
+                                "CSRF_INVALID"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Cookie phiên không hợp lệ hoặc CSRF/Origin sai (ở mutation).",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "SESSION_REQUIRED",
+              "CSRF_INVALID"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "JOB_NOT_FOUND"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Job không tồn tại hoặc không thuộc cookie phiên; UUID không cấp quyền.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "JOB_NOT_FOUND"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [
+          {
+            "cookie": [],
+            "csrf": []
+          },
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Rời trang: bắt đầu grace",
+        "tags": [
+          "public"
+        ],
+        "x-csrf-alternatives": [
+          "header:x-csrf-token",
+          "body:csrf"
+        ]
+      }
+    },
+    "/api/v1/session": {
+      "get": {
+        "description": "Cookie hợp lệ được dùng lại; thiếu/hết hạn/không hợp lệ thì tạo mới. Tối đa10 phiên mới/60s/IP trước insert; reuse không tiêu quota. supported/verified là cấu hình, không chứng nhận platform.",
+        "operationId": "SessionController_createSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "CSRF và cấu hình public; contact có thể null",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "description": "Chỉ khi tạo phiên mới: ws_session HttpOnly, SameSite=Lax, Path=/api, Max-Age24h; Secure khi COOKIE_SECURE=true. Không đưa cookie value vào JSON.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": " Framework/parser: malformed JSON trả400/INTERNAL_ERROR trước controller; URI encoding lỗi tại route có parameter cũng trả400/INTERNAL_ERROR trên runtime đã thử. HttpException giữ getStatus(); không suy mọi lỗi parser hay mọi status từ fixture này.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "RATE_LIMITED"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Hạn mức/admission; phân biệt RATE_LIMITED với QUEUE_FULL bằng error.code.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "RATE_LIMITED"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiError"
+                    },
+                    {
+                      "properties": {
+                        "error": {
+                          "properties": {
+                            "code": {
+                              "enum": [
+                                "INTERNAL_ERROR"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "SafeErrors chỉ trả error.code; không stack/message/path. Stream đã gửi headers có thể bị đóng thay vì JSON mới.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Global API middleware; lỗi/JSON/HEAD không cache.",
+                "schema": {
+                  "enum": [
+                    "no-store"
+                  ],
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Range không hợp lệ: bytes */size",
+                "schema": {
+                  "pattern": "^bytes \\*/[0-9]+$",
+                  "type": "string"
+                }
+              }
+            },
+            "x-error-codes": [
+              "INTERNAL_ERROR"
+            ]
+          }
+        },
+        "security": [],
+        "summary": "Lấy hoặc tạo cookie phiên",
+        "tags": [
+          "public"
+        ]
+      }
+    }
+  },
+  "servers": [],
+  "tags": []
+}

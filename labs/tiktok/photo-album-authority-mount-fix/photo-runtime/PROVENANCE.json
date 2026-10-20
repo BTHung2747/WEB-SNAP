@@ -1,0 +1,90 @@
+{
+  "files": [
+    {
+      "fromSHA": "b72f2f86114b8c8600c9e3584cc96f466506a103b1035d437ecb232759a0e284",
+      "to": "labs/tiktok/photo/package.json",
+      "from": "apps/media/src/tiktok/package.json",
+      "toSHA": "b72f2f86114b8c8600c9e3584cc96f466506a103b1035d437ecb232759a0e284",
+      "modified": false
+    },
+    {
+      "fromSHA": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "to": "labs/tiktok/photo/LICENSE",
+      "from": "apps/media/src/tiktok/LICENSE",
+      "toSHA": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "modified": false
+    },
+    {
+      "fromSHA": "1109dc66374209b01ea834863d06c002400452958c7466e8b46d76a91588b362",
+      "to": "labs/tiktok/photo/package-lock.json",
+      "from": "apps/media/src/tiktok/package-lock.json",
+      "toSHA": "1109dc66374209b01ea834863d06c002400452958c7466e8b46d76a91588b362",
+      "modified": false
+    },
+    {
+      "fromSHA": "b79a6c2f013d078b467200f9fcf495ba622f2f74c77af508a3b6d134235621a2",
+      "to": "labs/tiktok/photo/vendor/url.js",
+      "from": "apps/media/src/tiktok/vendor/url.js",
+      "toSHA": "b79a6c2f013d078b467200f9fcf495ba622f2f74c77af508a3b6d134235621a2",
+      "modified": false
+    },
+    {
+      "fromSHA": "11e5a50c96764f691f7efb080c45a51a8c1cb70ff23cf4e8c1f2cdd87a04e7c7",
+      "to": "labs/tiktok/photo/vendor/tiktok.js",
+      "from": "apps/media/src/tiktok/vendor/tiktok.js",
+      "toSHA": "a7386d9afe60a4ed084a4b60f5e262d84cfd7059ac097384322681f8244e0843",
+      "modified": true
+    },
+    {
+      "fromSHA": "33d28ac958a8df9222afbf4e44912570565391e00c97c9bb16328f5c69700d9b",
+      "to": "labs/tiktok/photo/vendor/service-config.js",
+      "from": "apps/media/src/tiktok/vendor/service-config.js",
+      "toSHA": "33d28ac958a8df9222afbf4e44912570565391e00c97c9bb16328f5c69700d9b",
+      "modified": false
+    },
+    {
+      "fromSHA": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+      "to": "labs/tiktok/photo/vendor/service-alias.js",
+      "from": "apps/media/src/tiktok/vendor/service-alias.js",
+      "toSHA": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+      "modified": false
+    },
+    {
+      "fromSHA": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+      "to": "labs/tiktok/photo/vendor/language-codes.js",
+      "from": "apps/media/src/tiktok/vendor/language-codes.js",
+      "toSHA": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+      "modified": false
+    },
+    {
+      "fromSHA": "146dabbdab711001163ff4e19575418ef0fd07efdefbef763653898d7b8ae574",
+      "to": "labs/tiktok/photo/vendor/cookie/manager.js",
+      "from": "apps/media/src/tiktok/vendor/cookie/manager.js",
+      "toSHA": "146dabbdab711001163ff4e19575418ef0fd07efdefbef763653898d7b8ae574",
+      "modified": false
+    },
+    {
+      "fromSHA": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+      "to": "labs/tiktok/photo/vendor/cookie/cookie.js",
+      "from": "apps/media/src/tiktok/vendor/cookie/cookie.js",
+      "toSHA": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+      "modified": false
+    },
+    {
+      "fromSHA": "ba3ed6647198cdffb6785eac89b04089d071f0d81b8b1cdedd6fc9f1d1e40396",
+      "to": "labs/tiktok/photo/vendor/config.js",
+      "from": "apps/media/src/tiktok/vendor/config.js",
+      "toSHA": "ba3ed6647198cdffb6785eac89b04089d071f0d81b8b1cdedd6fc9f1d1e40396",
+      "modified": false
+    }
+  ],
+  "commit": "a636575b09de1fc55d9b8cd98cac88f5f2f16b42",
+  "officialSources": [
+    "https://raw.githubusercontent.com/imputnet/cobalt/a636575b09de1fc55d9b8cd98cac88f5f2f16b42/api/src/processing/services/tiktok.js",
+    "https://raw.githubusercontent.com/yt-dlp/yt-dlp/2026.08.19/yt_dlp/extractor/tiktok.py",
+    "https://docs.python.org/3.11/library/imghdr.html",
+    "https://ffmpeg.org/ffprobe.html",
+    "https://ffmpeg.org/ffmpeg.html"
+  ],
+  "license": "AGPL-3.0"
+}

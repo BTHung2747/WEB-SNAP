@@ -1,0 +1,6 @@
+{
+  "sourceCalls": 0,
+  "change": "PolicyC/deadline/admission/coverage/lifecycle glue; public library TCP unchanged; sourceOFF",
+  "newDependencies": 0,
+  "predecessor": "labs/tiktok/wholephoto-order"
+}

@@ -1,0 +1,57 @@
+{
+  "scope": "HISTORICAL_STRUCTURE_RECOMPUTED_ONLY_NOT_CURRENT_SOURCE",
+  "sourceGrant": false,
+  "executionStarted": false,
+  "networkRequests": 0,
+  "summary": {
+    "version": "tt-photo-album-v1",
+    "id": "7678209751167110421",
+    "type": "photo",
+    "imageCount": 5,
+    "images": [
+      {
+        "index": 1,
+        "width": 2132,
+        "height": 2132,
+        "itemKey": "cf1977c19c30a43108e9ec9d96f63cfe4355478b8e00b1976606e0140adc3498"
+      },
+      {
+        "index": 2,
+        "width": 2132,
+        "height": 2132,
+        "itemKey": "1ad98a37c98bc40e86e1093bf8ec20ab94a1479ead88228728881b32d04e3497"
+      },
+      {
+        "index": 3,
+        "width": 2132,
+        "height": 2132,
+        "itemKey": "a0414ffb852803dfb303f5e65a75821dddc477aa092ee2cd6e190d5ba2dabdb7"
+      },
+      {
+        "index": 4,
+        "width": 2248,
+        "height": 2132,
+        "itemKey": "4617eb261a8332b5f6096ed178538ef1734d56e45e3054207d43273ff13974ec"
+      },
+      {
+        "index": 5,
+        "width": 2132,
+        "height": 2132,
+        "itemKey": "b064e5ba1ae2ef2e1673b68909c813187abc4088b2b8a028f8bea11b66fd88a4"
+      }
+    ],
+    "snapshotKey": "8fa38af83f8dc423d4d78b8044d5d7b26ae3fdef9ec73eab59fe04f8475c2127"
+  },
+  "historicalSnapshot": "8fa38af83f8dc423d4d78b8044d5d7b26ae3fdef9ec73eab59fe04f8475c2127",
+  "snapshotMatches": true,
+  "itemKeysMatch": true,
+  "selectedIndex": 2,
+  "expectedFormatId": "ttp1_02_8fa38af83f8dc423d4d78b8044d5d7b26ae3fdef9ec73eab59fe04f8475c2127",
+  "historicalFileIndex2": {
+    "sha256": "62308e76366aece0368f8c326f6430669fa4601ff1d963bb99378507091f5a8b",
+    "bytes": 322655
+  },
+  "currentImagePixels": "UNKNOWN",
+  "stopIfFreshStructureDiffers": true,
+  "fileSHAComparison": "Record new SHA independently; historical SHA is context, not proof or source authorization"
+}

@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Session {
+  id String @id
+  csrf String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  jobs DownloadJob[]
+}
+model AdminUser {
+  id String @id @default(uuid())
+  email String @unique
+  passwordHash String
+  createdAt DateTime @default(now())
+}
+model DownloadJob {
+  id String @id @default(uuid())
+  sessionId String
+  session Session @relation(fields: [sessionId], references: [id])
+  platform String
+  sourceUrl String?
+  state String @default("analyzing")
+  errorCode String?
+  title String?
+  duration Float?
+  metadataAcceptedAt DateTime?
+  metadataExpiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ownerUntil DateTime
+  releaseAt DateTime?
+  cancelRequested Boolean @default(false)
+  cleanupCompletedAt DateTime?
+  prepareKey String?
+  formatId String?
+  processUntil DateTime?
+  workerToken String?
+  items MediaItem[]
+  asset TemporaryAsset?
+  tickets DownloadTicket[]
+  @@index([state, ownerUntil])
+  @@index([state, metadataExpiresAt])
+  @@index([state, cleanupCompletedAt])
+}
+model MediaItem {
+  id String @id @default(uuid())
+  jobId String
+  job DownloadJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  kind String
+  formats Json
+}
+model TemporaryAsset {
+  id String @id @default(uuid())
+  jobId String @unique
+  job DownloadJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  state String @default("staging")
+  path String
+  size BigInt @default(0)
+  createdAt DateTime @default(now())
+  readyUntil DateTime?
+  transferDeadline DateTime?
+  retryUntil DateTime?
+  leases TransferLease[]
+}
+model TransferLease {
+  id String @id @default(uuid())
+  assetId String
+  asset TemporaryAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  state String @default("started")
+  startedAt DateTime @default(now())
+  expiresAt DateTime
+  bytes BigInt @default(0)
+  reserved BigInt
+  month String
+  endedAt DateTime?
+  @@index([state, expiresAt])
+}
+model DownloadTicket {
+  id String @id
+  jobId String
+  job DownloadJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+}
+model EgressBudget {
+  month String @id
+  charged BigInt @default(0)
+}
+model AdCampaign {
+  id String @id @default(uuid())
+  title String
+  imageUrl String?
+  targetUrl String
+  linkType String @default("sponsored")
+  placement String @default("banner")
+  enabled Boolean @default(false)
+  startsAt DateTime
+  endsAt DateTime
+  weight Int @default(1)
+  events AdEvent[]
+}
+model AdEvent {
+  id String @id
+  campaignId String
+  campaign AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  type String
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+model Settings {
+  id String @id @default("main")
+  value Json
+}
+model AuditLog {
+  id String @id @default(uuid())
+  actor String
+  action String
+  detail Json
+  createdAt DateTime @default(now())
+  @@index([actor, action, createdAt, id])
+}

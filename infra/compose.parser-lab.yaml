@@ -1,0 +1,38 @@
+name: wed-snap-parser-lab
+services:
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    environment:
+      P25_GUARD: wed-snap-parser-lab
+      P25_SOURCE_SHA: ${WED_PARSER_LAB_SHA:?Use scripts/test-framework.ps1}
+      DATABASE_URL: postgresql://p25@127.0.0.1:9/wed_snap_parser_unused
+      REDIS_URL: redis://127.0.0.1:9/13
+      MEDIA_ROOT: /media
+      APP_ORIGIN: http://p25.invalid
+      ADMIN_SESSION_SECRET: p25-docs-public-fixture-not-production-secret
+      VERIFIED_PLATFORMS: youtube
+      NODE_OPTIONS: --max-old-space-size=384
+    network_mode: none
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p24:/app/tests/p24:ro
+      - ./tests/p25:/app/tests/p25:ro
+      - ./docs/API.md:/app/docs/API.md:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./docs/openapi.json:/app/docs/openapi.json:ro
+    tmpfs:
+      - /tmp:size=32m,uid=1000,gid=1000,nosuid
+      - /media:size=1m,uid=1000,gid=1000,nosuid,noexec
+      - /app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+

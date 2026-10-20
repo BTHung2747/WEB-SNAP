@@ -1,0 +1,155 @@
+name: wed-snap
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+x-env: &runtime
+  DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap
+  REDIS_URL: redis://redis:6379
+  ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Run scripts/init-env.ps1}
+  APP_ORIGIN: ${APP_ORIGIN:-http://localhost:5173}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+  PRODUCT_NAME: ${PRODUCT_NAME:-WED SNAP}
+  VERIFIED_PLATFORMS: ${VERIFIED_PLATFORMS:-}
+  MEDIA_ROOT: /media
+  MEDIA_PROXY: http://egress:8888
+  MAX_DURATION_SECONDS: ${MAX_DURATION_SECONDS:-600}
+  MAX_BYTES: ${MAX_BYTES:-209715200}
+  MAX_INPUT_BYTES: ${MAX_INPUT_BYTES:-262144000}
+  ANALYZE_TIMEOUT_SECONDS: ${ANALYZE_TIMEOUT_SECONDS:-30}
+  PREPARE_TIMEOUT_SECONDS: ${PREPARE_TIMEOUT_SECONDS:-180}
+  SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-120}
+  RELEASE_GRACE_SECONDS: ${RELEASE_GRACE_SECONDS:-30}
+  READY_TTL_SECONDS: ${READY_TTL_SECONDS:-600}
+  SWEEP_SECONDS: ${SWEEP_SECONDS:-30}
+  LEASE_TTL_SECONDS: ${LEASE_TTL_SECONDS:-90}
+  RETRY_GRACE_SECONDS: ${RETRY_GRACE_SECONDS:-120}
+  TRANSFER_MAX_SECONDS: ${TRANSFER_MAX_SECONDS:-1800}
+  MONTHLY_EGRESS_BYTES: ${MONTHLY_EGRESS_BYTES:-10737418240}
+  DISK_STOP_PERCENT: ${DISK_STOP_PERCENT:-80}
+  QUEUE_LIMIT: ${QUEUE_LIMIT:-20}
+  NODE_OPTIONS: --max-old-space-size=256
+  CHOKIDAR_USEPOLLING: 'true'
+  CHOKIDAR_INTERVAL: '1000'
+x-app: &app
+  image: wed-snap-app:local
+  logging: *logging
+  init: false
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp:size=128m]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  environment: *runtime
+  networks: [private]
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    logging: *logging
+    environment:
+      POSTGRES_DB: wed_snap
+      POSTGRES_USER: wed_snap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=30]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [private]
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U wed_snap -d wed_snap]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4.6-bookworm
+    logging: *logging
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [redis_data:/data]
+    networks: [private]
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  egress:
+    build: { context: ., dockerfile: apps/egress/Dockerfile }
+    image: wed-snap-egress:local
+    logging: *logging
+    networks: [private, outbound]
+    mem_limit: 96m
+    cpus: 0.25
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  api:
+    <<: *app
+    environment:
+      <<: *runtime
+      TRUSTED_PROXY_HOSTS: web
+    build: { context: ., dockerfile: Dockerfile }
+    command: [node_modules/.bin/tsx, watch, apps/api/src/main.ts]
+    volumes:
+      - media_data:/media:ro
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./prisma:/app/prisma:ro
+    mem_limit: 384m
+    cpus: 0.75
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *app
+    command: [node_modules/.bin/tsx, apps/worker/src/main.ts]
+    volumes:
+      - media_data:/media
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./apps/media/src/media_adapter.py:/app/infra/media_adapter.py:ro
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 80
+    stop_grace_period: 190s
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      egress: { condition: service_started }
+  web:
+    <<: *app
+    command: [npm, run, dev, -w, apps/web, --, --configLoader, runner]
+    environment: { NODE_OPTIONS: --max-old-space-size=256 }
+    networks: [private, frontend]
+    ports: ['127.0.0.1:5173:5173']
+    volumes:
+      - ./apps/web/src:/app/apps/web/src:ro
+      - ./apps/web/index.html:/app/apps/web/index.html:ro
+      - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts:ro
+    mem_limit: 384m
+    cpus: 0.75
+    depends_on: [api]
+networks:
+  private: { internal: true }
+  outbound: {}
+  frontend: {}
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  media_data: {}

@@ -1,0 +1,1 @@
+if(process.env.P30_GUARD!=='wed-snap-ad-statistics-lab')throw Error('Guard');console.log(require('node:crypto').createHash('sha256').update(require('node:fs').readFileSync('/tmp/p30/openapi.json')).digest('hex'));

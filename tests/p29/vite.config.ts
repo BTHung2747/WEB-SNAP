@@ -1,0 +1,3 @@
+import {defineConfig} from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({root:'/app/tests/p29',cacheDir:'/tmp/p29-vite',plugins:[react()],server:{host:'0.0.0.0',port:5179,strictPort:true,fs:{allow:['/app/apps/web','/app/tests/p29','/app/node_modules']},watch:{usePolling:true,interval:1000},proxy:{'/api':{target:'http://api:3000',changeOrigin:false},'/__p29':{target:'http://api:3000',changeOrigin:false}},headers:{'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:5179; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}}});

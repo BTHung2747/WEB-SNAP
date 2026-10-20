@@ -1,0 +1,27 @@
+# Search/context exclusions. This file is for ripgrep and agent discovery even
+# when the workspace is not yet recognized as a Git worktree.
+docs/evidence/**
+lab-runs/**
+backups/**
+node_modules/**
+**/node_modules/**
+dist/**
+**/dist/**
+coverage/**
+**/coverage/**
+**/__pycache__/**
+**/*.pyc
+
+# Long historical ledgers are read only by explicit path and bounded section.
+docs/AUDIT_TIEN_DO.md
+docs/PROGRESS.md
+
+# Binary/raw runtime artifacts are never useful in a default text search.
+*.mp4
+*.wav
+*.pem
+*.log
+*.dump
+*.part
+*.ytdl
+*.gz

@@ -1,0 +1,47 @@
+# ONLY with -p wed-snap-p3-test and compose.test.yaml; never production volumes.
+services:
+  socket-test:
+    image: wed-snap-p3-test:local
+    command: [python3, /app/tests/p3_socket_server.py]
+    environment:
+      P3_TEST_GUARD: wed-snap-p3-test
+    volumes:
+      - p3_control:/control
+      - ./tests:/app/tests:ro
+    networks: [private]
+    read_only: true
+    tmpfs: [/tmp:size=8m]
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 32
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  egress:
+    image: wed-snap-p3-egress:local
+  postgres:
+    environment:
+      POSTGRES_DB: wed_snap_p3_test
+  api:
+    image: wed-snap-p3-test:local
+    environment:
+      DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap_p3_test
+      REDIS_URL: redis://redis:6379/14
+      P3_TEST_GUARD: wed-snap-p3-test
+  worker:
+    image: wed-snap-p3-test:local
+    environment:
+      DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap_p3_test
+      REDIS_URL: redis://redis:6379/14
+      P3_TEST_GUARD: wed-snap-p3-test
+    volumes: !override
+      - test_media:/media
+      - p3_control:/control
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./tests/p3_fixture_adapter.py:/app/infra/media_adapter.py:ro
+      - ./apps/media/src:/app/production:ro
+      - ./tests:/app/tests:ro
+  web:
+    image: wed-snap-p3-test:local
+volumes:
+  p3_control: {}

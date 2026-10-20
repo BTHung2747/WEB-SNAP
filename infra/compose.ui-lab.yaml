@@ -1,0 +1,28 @@
+name: wed-snap-ui-lab
+services:
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node_modules/.bin/vite, --config, tests/p19/vite.config.ts, --configLoader, runner]
+    environment:
+      P19_UI_GUARD: wed-snap-ui-lab
+      P19_SOURCE_SHA: ${WED_UI_LAB_SHA:?Use scripts/test-ui.ps1}
+      NODE_OPTIONS: --max-old-space-size=256
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/web:/app/apps/web:ro
+      - ./tests/p19:/app/tests/p19:ro
+      - ./tests/p20:/app/tests/p20:ro
+    tmpfs: ['/tmp:size=32m,noexec,nosuid']
+    ports: ['127.0.0.1:5175:5175']
+    networks: [lab]
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s
+networks:
+  lab:
+    internal: false

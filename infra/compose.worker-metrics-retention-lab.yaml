@@ -1,0 +1,67 @@
+name: wed-snap-worker-metrics-retention-lab
+services:
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    user: node
+    read_only: true
+    environment:
+      P34_GUARD: wed-snap-worker-metrics-retention-lab
+      P34_SOURCE_SHA: ${WED_WORKER_METRICS_RETENTION_SHA:?Use scripts/test-worker-metrics-retention.ps1}
+      DATABASE_URL: postgresql://p34@db:5432/wed_snap_worker_metrics_retention_test
+      REDIS_URL: redis://redis:6379/11
+      MEDIA_ROOT: /tmp/p34-media
+      APP_ORIGIN: http://p34.invalid
+      ADMIN_SESSION_SECRET: p34-unused-sentinel-replaced-in-memory
+      COOKIE_SECURE: 'false'
+      TRUSTED_PROXY_HOSTS: ''
+      VERIFIED_PLATFORMS: youtube
+      NODE_OPTIONS: --max-old-space-size=384
+    volumes:
+      - ./apps/worker:/app/apps/worker:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p34:/app/tests/p34:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+    tmpfs: ['/tmp:size=64m,uid=1000,gid=1000,nosuid','/app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec']
+    networks: [lab]
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s
+  db:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    read_only: true
+    environment:
+      POSTGRES_DB: wed_snap_worker_metrics_retention_test
+      POSTGRES_USER: p34
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [retention_db:/var/lib/postgresql/data]
+    tmpfs: ['/tmp:size=16m,nosuid','/var/run/postgresql:size=8m,nosuid']
+    networks: [lab]
+    mem_limit: 192m
+    cpus: 0.5
+    pids_limit: 64
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    read_only: true
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [retention_redis:/data]
+    tmpfs: ['/tmp:size=8m,nosuid']
+    networks: [lab]
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+networks:
+  lab:
+    internal: true
+volumes:
+  retention_db:
+  retention_redis:
+
+

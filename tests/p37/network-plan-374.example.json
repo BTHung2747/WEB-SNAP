@@ -1,0 +1,9 @@
+{
+  "schema": "wed-snap-374-network-plan-v1",
+  "ownerProvidedAlternative": false,
+  "useAuthorized": false,
+  "currentLabel": "",
+  "alternateLabel": "",
+  "verificationMethod": "",
+  "note": "Owner supplies both networks and authorizes their use. Network switching is manual; no automatic adapter/VPN/router change. This template deliberately fails the run gate."
+}

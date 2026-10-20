@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+node_modules
+**/node_modules
+**/dist
+docs/evidence
+backups
+*.dump
+*.log
+*.part
+.aws
+**/__pycache__
+**/*.pyc

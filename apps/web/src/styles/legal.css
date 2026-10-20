@@ -1,0 +1,29 @@
+.legal {
+  max-width: 760px;
+  padding: 40px 24px 80px;
+  margin: auto;
+  min-height: 70vh;
+}
+.legal > .eyebrow {
+  display: block;
+  margin: 28px 0 0;
+}
+.legal h1 {
+  font-size: 40px;
+}
+.legal h2 {
+  font-size: 19px;
+  margin: 28px 0 12px;
+}
+.legal p {
+  font-size: 15px;
+  line-height: 1.9;
+  color: #637188;
+}
+.loading {
+  min-height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "wed-human-source-instruction-record-v1",
+  "date": "2026-10-19",
+  "timezone": "Asia/Saigon",
+  "sourceThreadID": "01a14259-19b0-73f0-bd0c-0f5be84f6a88",
+  "assistantQuestion": "Bạn cho phép chạy đúng 1 lượt kiểm nguồn thật bằng bài ảnh công khai cũ, trong lab riêng, dọn sạch sau chạy và không bật main/deploy chứ?",
+  "directHumanReply": "làm đi",
+  "authorityBasis": "DIRECT_HUMAN_REPLY_IN_CURRENT_REVIEW_THREAD",
+  "scope": "ONE_TIKTOK_PHOTO_UI_WORKFLOW",
+  "canonicalURL": "https://www.tiktok.com/@adne_la.veil/photo/7678209751167110421",
+  "expectedPostID": "7678209751167110421",
+  "selectedIndex": 2,
+  "maximumSourceAdmissions": 1,
+  "labOnly": true,
+  "cleanupRequired": true,
+  "mainActivation": false,
+  "galleryActivation": false,
+  "deployment": false,
+  "reuseOldGrantOrClaim": false,
+  "isRuntimeGrant": false,
+  "note": "Bản ghi nguyên văn ý kiến chủ để reviewer/issuer ràng buộc lượt mới; không tự là signed approval, claim hoặc environment proof. Phải giữ admission/identity/budget/clock/ownership/native/browser gates thật, chuẩn bị và review trước khi cấp authority thực thi một lần. Không có timestamp chính xác do người dùng cung cấp; không bịa message ID hoặc thời gian gửi."
+}

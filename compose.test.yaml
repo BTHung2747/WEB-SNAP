@@ -1,0 +1,43 @@
+# Separate project name AND volumes. No production volume is mounted here.
+name: wed-snap-test
+services:
+  postgres:
+    volumes: !override [test_postgres:/var/lib/postgresql/data]
+  redis:
+    volumes: !override [test_redis:/data]
+  api:
+    volumes: !override
+      - test_media:/media:ro
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./tests:/app/tests:ro
+      - ./prisma:/app/prisma:ro
+    environment:
+      VERIFIED_PLATFORMS: youtube
+      SESSION_TTL_SECONDS: 20
+      RELEASE_GRACE_SECONDS: 2
+      RETRY_GRACE_SECONDS: 3
+      SWEEP_SECONDS: 1
+      READY_TTL_SECONDS: 15
+      APP_ORIGIN: http://localhost:5174
+  worker:
+    volumes: !override
+      - test_media:/media
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./tests/fixture_adapter.py:/app/infra/media_adapter.py:ro
+      - ./tests:/app/tests:ro
+    environment:
+      VERIFIED_PLATFORMS: youtube
+      SESSION_TTL_SECONDS: 20
+      RELEASE_GRACE_SECONDS: 2
+      RETRY_GRACE_SECONDS: 3
+      SWEEP_SECONDS: 1
+      READY_TTL_SECONDS: 15
+      APP_ORIGIN: http://localhost:5174
+  web:
+    ports: !override ['127.0.0.1:5174:5173']
+volumes:
+  test_postgres: {}
+  test_redis: {}
+  test_media: {}

@@ -1,0 +1,53 @@
+name: wed-snap-tiktok-lab-373
+x-labels: &labels
+  com.wed-snap.lab: tiktok-373
+  com.wed-snap.run: ${LAB373_RUN_ID:?Unique run ID required}
+services:
+  egress:
+    image: wed-snap-egress:local
+    pull_policy: never
+    container_name: wed-snap-tiktok-373-egress
+    labels: *labels
+    networks: [private, outbound]
+    read_only: true
+    user: '65534:65534'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 64
+    restart: 'no'
+  probe:
+    image: ${LAB373_IMAGE:?Runner pins image ID before start}
+    pull_policy: never
+    container_name: wed-snap-tiktok-373-probe
+    labels: *labels
+    networks: [private]
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.75
+    pids_limit: 64
+    restart: 'no'
+    environment:
+      MEDIA_PROXY: http://egress:8888
+      AB_ARM: ${AB_ARM:?One arm per container}
+      AB_TARGET: ${AB_TARGET:-}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      HOME: /tmp
+    command: [python3, /p37/probe_373.py]
+    volumes:
+      - ./tests/p37:/p37:ro
+      - type: bind
+        source: ${LAB373_OUTPUT_DIR:?New evidence directory required}
+        target: /out
+    tmpfs: ['/tmp:size=64m,noexec,nosuid']
+    depends_on: [egress]
+networks:
+  private: {internal: true, labels: *labels}
+  outbound: {labels: *labels}

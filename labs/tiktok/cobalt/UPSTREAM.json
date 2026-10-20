@@ -1,0 +1,69 @@
+{
+  "retrievedUTC": "2026-10-07T17:30:53.8190756Z",
+  "license": "AGPL-3.0",
+  "files": [
+    {
+      "sha256": "26a3621beb2a18611e27d2a652c1ed39da703e005168111a1958fe4c86c18d46",
+      "path": "labs/tiktok/cobalt/upstream/pnpm-lock.yaml",
+      "bytes": 134305
+    },
+    {
+      "sha256": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "path": "labs/tiktok/cobalt/upstream/LICENSE",
+      "bytes": 34469
+    },
+    {
+      "sha256": "b5e50ee2cb9de235c0a05ab2764e26c75f7dac3cd8b701395b754aeb43959a60",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/url.js",
+      "bytes": 7288
+    },
+    {
+      "sha256": "58d30356588911f93a69b83b57edd2b99d5ffa15506dd4c6f942aabbf1139275",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/services/tiktok.js",
+      "bytes": 5068
+    },
+    {
+      "sha256": "a215c7b1ff40039f7af12f11c86ee59ec4bb2a08032db5846c93345e47f0150a",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/service-config.js",
+      "bytes": 5777
+    },
+    {
+      "sha256": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/service-alias.js",
+      "bytes": 228
+    },
+    {
+      "sha256": "ae0a2538bd332134005f7e3a43c9e437f64feccf8b5330bea7a64b423c582b22",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/cookie/manager.js",
+      "bytes": 4706
+    },
+    {
+      "sha256": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+      "path": "labs/tiktok/cobalt/upstream/api/src/processing/cookie/cookie.js",
+      "bytes": 1062
+    },
+    {
+      "sha256": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+      "path": "labs/tiktok/cobalt/upstream/api/src/misc/language-codes.js",
+      "bytes": 2959
+    },
+    {
+      "sha256": "120213f291bf89a9aa0ce7238d4a30936885b28300984d9254f65108afc7644b",
+      "path": "labs/tiktok/cobalt/upstream/api/src/config.js",
+      "bytes": 1101
+    },
+    {
+      "sha256": "17a5c35478a26f137e1243be4c21af2abf84e682ca433540b12b4d213dda8c8d",
+      "path": "labs/tiktok/cobalt/upstream/api/README.md",
+      "bytes": 7939
+    },
+    {
+      "sha256": "12e9f31e2d1a6567131683cdd2104374060cadea83d95a6ae8e353ab8626fd3f",
+      "path": "labs/tiktok/cobalt/upstream/api/package.json",
+      "bytes": 1469
+    }
+  ],
+  "commit": "a636575b09de1fc55d9b8cd98cac88f5f2f16b42",
+  "author": "imput and Cobalt contributors",
+  "repository": "https://github.com/imputnet/cobalt"
+}

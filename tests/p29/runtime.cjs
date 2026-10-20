@@ -1,0 +1,2 @@
+const fs=require('node:fs');if(process.env.P29_GUARD!=='wed-snap-admin-browser-lab')throw Error('Guard');
+console.log('P29_RUNTIME '+JSON.stringify({utc:new Date().toISOString(),node:process.version,namespace:fs.readlinkSync('/proc/self/ns/pid'),versions:Object.fromEntries(['react','react-dom','vite','typescript','tailwindcss','@nestjs/core','@prisma/client','ioredis','bullmq'].map(p=>[p,JSON.parse(fs.readFileSync('/app/node_modules/'+p+'/package.json','utf8')).version])),sourceRO:true,privateTmpfsClient:true,businessFixtures:false}));

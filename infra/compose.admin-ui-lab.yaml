@@ -1,0 +1,28 @@
+name: wed-snap-admin-ui-lab
+services:
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node_modules/.bin/vite, --config, tests/p28/vite.config.ts, --configLoader, runner]
+    environment:
+      P28_GUARD: wed-snap-admin-ui-lab
+      P28_SOURCE_SHA: ${WED_ADMIN_UI_SHA:?Use scripts/test-admin-ui.ps1}
+      NODE_OPTIONS: --max-old-space-size=384
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/web:/app/apps/web:ro
+      - ./tests/p28:/app/tests/p28:ro
+      - ./docs/openapi.json:/app/docs/openapi.json:ro
+    tmpfs: ['/tmp:size=32m,noexec,nosuid']
+    ports: ['127.0.0.1:5177:5177']
+    networks: [lab]
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s
+networks:
+  lab:
+    internal: false

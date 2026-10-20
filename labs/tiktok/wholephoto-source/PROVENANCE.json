@@ -1,0 +1,9 @@
+{
+  "predecessor": "labs/tiktok/wholephoto-connector",
+  "stock": "apps/egress/src/egress.py",
+  "photoUnmodified": "labs/tiktok/photo",
+  "vendorUnmodified": "labs/tiktok/connect-poc/vendor",
+  "sourceChanges": "Only stage isolation, source config/hash gate and public socket observation; no old code changes",
+  "sourceBudget": "one analyze max2GET30s + conditional image1GET60s; no retry/redirect/HEAD",
+  "dependenciesInstalled": 0
+}

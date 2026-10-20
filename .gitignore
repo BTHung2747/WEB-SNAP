@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+docs/evidence/*
+!docs/evidence/.gitkeep
+lab-runs/
+*.log
+*.dump
+*.mp4
+*.part
+*.ytdl
+backups/
+__pycache__/
+*.pyc

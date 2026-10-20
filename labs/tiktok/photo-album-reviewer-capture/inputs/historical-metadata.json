@@ -1,0 +1,40 @@
+{
+  "notFixture64x64": true,
+  "sourcePath": "docs/evidence/tiktok-photo-source-trial-v4-live-20261013/source-task/task-cf3808fc328743369a848f3bb5a5495e/b8f3a0d86c51490383c87fc925c876da/worker/result.json",
+  "contentIdentity": "UNKNOWN_STRUCTURAL_DIMENSION_FINGERPRINT_ONLY",
+  "sourceSHA": "daf3f2f7abd78b5dd65f93772d0fd2483de7ff1cd13887d2cc4963adbea57af2",
+  "scope": "HISTORICAL_PUBLIC_METADATA_NOT_SOURCE_AUTHORITY",
+  "summary": {
+    "id": "7678209751167110421",
+    "type": "photo",
+    "imageCount": 5,
+    "images": [
+      {
+        "index": 1,
+        "width": 2132,
+        "height": 2132
+      },
+      {
+        "index": 2,
+        "width": 2132,
+        "height": 2132
+      },
+      {
+        "index": 3,
+        "width": 2132,
+        "height": 2132
+      },
+      {
+        "index": 4,
+        "width": 2248,
+        "height": 2132
+      },
+      {
+        "index": 5,
+        "width": 2132,
+        "height": 2132
+      }
+    ]
+  },
+  "origin": "SOURCE_TRIAL_V4_20261013_PHOTO1_ANALYZE"
+}

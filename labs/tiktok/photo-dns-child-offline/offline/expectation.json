@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "version": "tt-photo-album-v1",
+    "id": "7000000000000000001",
+    "type": "photo",
+    "imageCount": 5,
+    "images": [
+      {
+        "index": 1,
+        "width": 64,
+        "height": 64,
+        "itemKey": "3a276fc8090c50908c79ce8144ec92d1e25e89148aa6895972b62c7d4082ba58"
+      },
+      {
+        "index": 2,
+        "width": 64,
+        "height": 64,
+        "itemKey": "13ccc11a2806ab745c5ae6220ab6b2b589b8b2cb7e0940d9cce8222dd975fbaa"
+      },
+      {
+        "index": 3,
+        "width": 64,
+        "height": 64,
+        "itemKey": "ab2d2f74de68831bb975616bd9d1253f5accd7f48f3f5ebe973bbe014985182e"
+      },
+      {
+        "index": 4,
+        "width": 64,
+        "height": 64,
+        "itemKey": "632dbc9274638715b9b3c94a5a081da3d763bf73536cf416611f77d3c7d5c0b1"
+      },
+      {
+        "index": 5,
+        "width": 64,
+        "height": 64,
+        "itemKey": "f138f49203e06d75c086934f715025cd40dfba046c709e02b368b440b54dc9c0"
+      }
+    ],
+    "snapshotKey": "d930cdf98397d57e4fdc3625ba56220b313e069fa46c96df78f322655399f12b"
+  },
+  "scope": "OFFLINE_SYNTHETIC_NOT_SOURCE",
+  "historicalFileIndex2": null
+}

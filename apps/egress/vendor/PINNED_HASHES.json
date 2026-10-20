@@ -1,0 +1,42 @@
+[
+  {
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+    "path": "aiohappyeyeballs-2.7.1.dist-info/licenses/LICENSE"
+  },
+  {
+    "sha256": "e68d1bf48aec9dcc2767343dedec25e12860085cba180e10bc3d3bdd031602ba",
+    "path": "aiohappyeyeballs-2.7.1.dist-info/METADATA"
+  },
+  {
+    "sha256": "2f3b3c859a9e2782f2b1a98f3e4ba1e52110a768e01339b7f53ed23c1dda22e7",
+    "path": "aiohappyeyeballs-2.7.1.dist-info/RECORD"
+  },
+  {
+    "sha256": "10612f4a984562a5cab36dfe91005ec8da093f59eb4fc649290a22e69e4360bf",
+    "path": "aiohappyeyeballs-2.7.1.dist-info/WHEEL"
+  },
+  {
+    "sha256": "f30fbf99f793ec71ad6db3c5283821a6bf0e1ac436537ff27d9097027674442b",
+    "path": "aiohappyeyeballs/__init__.py"
+  },
+  {
+    "sha256": "6a3ddc4b01c40d7f3c50c7cef5b51abbdb5fad102cce18e0f7d76910c8803863",
+    "path": "aiohappyeyeballs/_staggered.py"
+  },
+  {
+    "sha256": "eb32b7ba4aa27993fe187deb56cf16af8dfcb4fbfe63b4f5846802ca02a64bb2",
+    "path": "aiohappyeyeballs/impl.py"
+  },
+  {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "path": "aiohappyeyeballs/py.typed"
+  },
+  {
+    "sha256": "ffc2661c58b1e8c78cd5eee144fec195e11a1b2f771acc06b7342fd3af33298f",
+    "path": "aiohappyeyeballs/types.py"
+  },
+  {
+    "sha256": "c051d5f1ea4632a22b0bda6aa1f4cee2a968065775e063ef55be52a5bdb91c92",
+    "path": "aiohappyeyeballs/utils.py"
+  }
+]

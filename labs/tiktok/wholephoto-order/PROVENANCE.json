@@ -1,0 +1,8 @@
+{
+  "timeoutChanged": false,
+  "sourceChanges": "Per-phase/request observer order validation and fresh offline contradiction/control tests only",
+  "sourceBudget": "Consumed source claim preserved; source runner remains blocked",
+  "dependenciesInstalled": 0,
+  "predecessor": "labs/tiktok/wholephoto-linkage",
+  "transportChanged": false
+}

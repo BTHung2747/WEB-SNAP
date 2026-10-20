@@ -1,0 +1,58 @@
+name: wed-snap-ads-lab
+services:
+  db:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    environment:
+      POSTGRES_USER: p20
+      POSTGRES_DB: wed_snap_ads_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [ads_db:/var/lib/postgresql/data]
+    networks: [lab]
+    mem_limit: 192m
+    pids_limit: 64
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U p20 -d wed_snap_ads_test]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [ads_redis:/data]
+    networks: [lab]
+    mem_limit: 96m
+    pids_limit: 32
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    environment:
+      P20_GUARD: wed-snap-ads-lab
+      P20_SOURCE_SHA: ${WED_ADS_LAB_SHA:?Use scripts/test-ads.ps1}
+      DATABASE_URL: postgresql://p20@db:5432/wed_snap_ads_test
+      REDIS_URL: redis://redis:6379/14
+      MEDIA_ROOT: /tmp/p20-unused-media
+      APP_ORIGIN: http://p20.local
+      ADMIN_SESSION_SECRET: p20-isolated-fixture-not-a-production-secret
+      NODE_OPTIONS: --max-old-space-size=384
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p20:/app/tests/p20:ro
+    tmpfs: ['/tmp:size=48m,nosuid']
+    networks: [lab]
+    mem_limit: 512m
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  lab:
+    internal: true
+volumes:
+  ads_db:
+  ads_redis:

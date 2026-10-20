@@ -1,0 +1,178 @@
+{
+  "license": "AGPL-3.0",
+  "commit": "a636575b09de1fc55d9b8cd98cac88f5f2f16b42",
+  "source": "imputnet/cobalt and tested lab candidate",
+  "files": [
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/config.js",
+      "fromSHA": "ba3ed6647198cdffb6785eac89b04089d071f0d81b8b1cdedd6fc9f1d1e40396",
+      "to": "apps/media/src/tiktok/vendor/config.js",
+      "toSHA": "ba3ed6647198cdffb6785eac89b04089d071f0d81b8b1cdedd6fc9f1d1e40396",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/language-codes.js",
+      "fromSHA": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+      "to": "apps/media/src/tiktok/vendor/language-codes.js",
+      "toSHA": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/service-alias.js",
+      "fromSHA": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+      "to": "apps/media/src/tiktok/vendor/service-alias.js",
+      "toSHA": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/service-config.js",
+      "fromSHA": "33d28ac958a8df9222afbf4e44912570565391e00c97c9bb16328f5c69700d9b",
+      "to": "apps/media/src/tiktok/vendor/service-config.js",
+      "toSHA": "33d28ac958a8df9222afbf4e44912570565391e00c97c9bb16328f5c69700d9b",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/tiktok.js",
+      "fromSHA": "11e5a50c96764f691f7efb080c45a51a8c1cb70ff23cf4e8c1f2cdd87a04e7c7",
+      "to": "apps/media/src/tiktok/vendor/tiktok.js",
+      "toSHA": "1c0b34c69067a100547429fc93ce66211349f7c3aa94097d520ce6c845c44a07",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/url.js",
+      "fromSHA": "b79a6c2f013d078b467200f9fcf495ba622f2f74c77af508a3b6d134235621a2",
+      "to": "apps/media/src/tiktok/vendor/url.js",
+      "toSHA": "b79a6c2f013d078b467200f9fcf495ba622f2f74c77af508a3b6d134235621a2",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/cookie/cookie.js",
+      "fromSHA": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+      "to": "apps/media/src/tiktok/vendor/cookie/cookie.js",
+      "toSHA": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/vendor/cookie/manager.js",
+      "fromSHA": "146dabbdab711001163ff4e19575418ef0fd07efdefbef763653898d7b8ae574",
+      "to": "apps/media/src/tiktok/vendor/cookie/manager.js",
+      "toSHA": "146dabbdab711001163ff4e19575418ef0fd07efdefbef763653898d7b8ae574",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/candidate_file.py",
+      "fromSHA": "a7662350a649b5f8d03979af9d96e111dac643aa788b7b64443bd4c86d9968a0",
+      "to": "apps/media/src/tiktok/candidate_file.py",
+      "toSHA": "fed9b77b469b00b58282eae59daf96e84ee357a089673c299b872bcef01c0adc",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/prepare_operations.py",
+      "fromSHA": "3b0d2c51fc1d0ec301a9fa76571513f201c698a8b6d94863c0d69f6d91169cb3",
+      "to": "apps/media/src/tiktok/prepare_operations.py",
+      "toSHA": "cf35e7f2e60636375501c2afec22e99a6f2ae9ef11a5776e8e673f5f7854dc79",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/send_diagnostics.py",
+      "fromSHA": "4621861f0cadaecd9f5e50e8d85f66e61d0ebf740d172505f6b220ec6cf87496",
+      "to": "apps/media/src/tiktok/send_diagnostics.py",
+      "toSHA": "4621861f0cadaecd9f5e50e8d85f66e61d0ebf740d172505f6b220ec6cf87496",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/connection_boundaries.py",
+      "fromSHA": "aed3186c4f1ecdf1e8d3239437836292ade9acf584eab5ac277ba1a65d85f476",
+      "to": "apps/media/src/tiktok/connection_boundaries.py",
+      "toSHA": "57e6b8c5429ad2c50f97b5f25549cae5a9bf6beb803502ebb7175b2ba84547da",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/yt_candidate.py",
+      "fromSHA": "6e21a42edbbe5e996ceed09f69290be2917732da52ebf95510a11f5ac0dae85a",
+      "to": "apps/media/src/tiktok/core.py",
+      "toSHA": "2fc391a1f7feaa28298c680d6d8a8d83606a76a7bd3948fe86e905810269d46f",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/src/validate_cobalt_body.mjs",
+      "fromSHA": "b97bc0dbcaf17806c3763583c9f9601c0a3b0db6aa512c003d099f4e4475d0c8",
+      "to": "apps/media/src/tiktok/validate_cobalt_body.mjs",
+      "toSHA": "5d709bed96698423cd83bbeef2af4ff347255aeab8755be744db7595223673d3",
+      "modified": true
+    },
+    {
+      "from": "labs/tiktok/cobalt/LICENSE",
+      "fromSHA": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "to": "apps/media/src/tiktok/LICENSE",
+      "toSHA": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/package.json",
+      "fromSHA": "b72f2f86114b8c8600c9e3584cc96f466506a103b1035d437ecb232759a0e284",
+      "to": "apps/media/src/tiktok/package.json",
+      "toSHA": "b72f2f86114b8c8600c9e3584cc96f466506a103b1035d437ecb232759a0e284",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/package-lock.json",
+      "fromSHA": "1109dc66374209b01ea834863d06c002400452958c7466e8b46d76a91588b362",
+      "to": "apps/media/src/tiktok/package-lock.json",
+      "toSHA": "1109dc66374209b01ea834863d06c002400452958c7466e8b46d76a91588b362",
+      "modified": false
+    },
+    {
+      "from": "labs/tiktok/cobalt/UPSTREAM.json",
+      "fromSHA": "f2a8b2cae68a32718aa8ff244a8a321ce26b859786f2140d8a419b685e7c53a9",
+      "to": "apps/media/src/tiktok/UPSTREAM.json",
+      "toSHA": "f2a8b2cae68a32718aa8ff244a8a321ce26b859786f2140d8a419b685e7c53a9",
+      "modified": false
+    }
+  ],
+  "noRunnerFixtureCopied": true,
+  "YouTubeTailExact": true,
+  "auditFixes": [
+    "F-APP-DURATION-CAP",
+    "F-APP-BODY-TIMEOUT-CODE"
+  ],
+  "photoCore20261015": {
+    "files": [
+      {
+        "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/album_contract.py",
+        "modified": true,
+        "scope": "Pure summary/strict structural fingerprint/single format selection only",
+        "fromSHA": "21a7479dc852848f198e918943ebd557a1aa8ace2d51001142fb8f2bf0cbfd98",
+        "toSHA": "73a49cb6d14e2be78fa953fb02d46269f1fe2943f971caf9ec8416a42d5a5e81",
+        "to": "apps/media/src/tiktok/photo_contract.py"
+      },
+      {
+        "from": "labs/tiktok/photo-album-authority-mount-fix/photo-runtime/picker.mjs",
+        "modified": true,
+        "scope": "Bounded RAM bridge; upstream resolver owns parser and JPEG picker",
+        "fromSHA": "9e94ec95a23d2c65bed679ef7d2a3046fc8f0f8b0138f99f378c47df347214ac",
+        "toSHA": "beb37978b68425ccf6855a5e7950644bbef052767357234d7bd6d342bbb63bee",
+        "to": "apps/media/src/tiktok/photo_picker.mjs"
+      },
+      {
+        "from": "labs/tiktok/photo-album-authority-mount-fix/photo-runtime/worker.py",
+        "modified": true,
+        "scope": "contract function; Operations/ffprobe/full decode/hash",
+        "fromSHA": "11130028d44195cea00055f0024785c20c1e7da9105a46e0c6297f57104a0e32",
+        "toSHA": "46b4affdefeed9b9b49804788c61555ade99bc6d2b1c53c8261ec2ca20ddb86f",
+        "to": "apps/media/src/tiktok/photo_file.py"
+      },
+      {
+        "from": "labs/tiktok/photo-album-authority-mount-fix/runtime/album_worker.py",
+        "modified": true,
+        "scope": "New stateless integration; reuses existing app GuardedYDL/Requests/Budget/Operations; no lab authority/worker copied",
+        "fromSHA": "94d1a1237fec71091222e5397500fa6ea3fd204535776c1b35761d65884cb22a",
+        "toSHA": "4203cf5b8bff264c3a68f262c8420b4788b2a81c53e91ea9e7a435ec20270493",
+        "to": "apps/media/src/tiktok/photo_core.py"
+      }
+    ],
+    "commit": "a636575b09de1fc55d9b8cd98cac88f5f2f16b42",
+    "license": "AGPL-3.0",
+    "wired": false
+  }
+}

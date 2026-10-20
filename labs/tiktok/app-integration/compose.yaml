@@ -1,0 +1,79 @@
+name: wed-snap-tiktok-app-fixture
+x-labels: &labels
+  com.wed-snap.lab: tiktok-app-integration
+  com.wed-snap.run: ${TIKTOK_APP_RUN:?Runner required}
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    user: '999:999'
+    labels: *labels
+    environment: {POSTGRES_DB: tiktok_app_fixture, POSTGRES_USER: tiktok_fixture, POSTGRES_PASSWORD: lab-public-only-password}
+    command: [postgres, -c, shared_buffers=16MB, -c, max_connections=20]
+    read_only: true
+    tmpfs: ['/var/lib/postgresql/data:size=128m,uid=999,gid=999,nosuid', '/var/run/postgresql:size=8m,uid=999,gid=999,nosuid', '/tmp:size=8m,uid=999,gid=999,nosuid']
+    networks: [private]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck: {test: [CMD, pg_isready, -U, tiktok_fixture, -d, tiktok_app_fixture], interval: 1s, timeout: 2s, retries: 30}
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    user: '1000:1000'
+    labels: *labels
+    command: [redis-server, --save, '', --appendonly, 'no', --maxmemory, 32mb, --maxmemory-policy, noeviction]
+    read_only: true
+    tmpfs: ['/data:size=8m,uid=1000,gid=1000,nosuid']
+    networks: [private]
+    mem_limit: 64m
+    memswap_limit: 64m
+    cpus: 0.25
+    pids_limit: 32
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 1s, timeout: 2s, retries: 30}
+  app:
+    image: ${TIKTOK_APP_IMAGE:?Pinned integration image}
+    pull_policy: never
+    user: '1000:1000'
+    labels: *labels
+    command: [bash, /fixture/start-api-lab.sh]
+    environment:
+      DATABASE_URL: postgresql://tiktok_fixture:lab-public-only-password@postgres:5432/tiktok_app_fixture
+      REDIS_URL: redis://redis:6379/7
+      APP_ORIGIN: http://tiktok-app-fixture.invalid
+      ADMIN_SESSION_SECRET: tiktok-app-lab-public-fixture-secret-32plus
+      VERIFIED_PLATFORMS: youtube,tiktok
+      TIKTOK_ADAPTER_ENABLED: '1'
+      TIKTOK_APP_FIXTURE: '1'
+      PYTHONPATH: /fixture:/app/apps/media/src
+      PYTHONDONTWRITEBYTECODE: '1'
+      MEDIA_ROOT: /media
+      MEDIA_PROXY: http://egress:8888
+      FIXTURE_CONTROL: /control
+      FIXTURE_MEDIA_FILE: /control/input.mp4
+      NODE_OPTIONS: --max-old-space-size=192
+      HOME: /tmp
+    read_only: true
+    volumes:
+      - ./labs/tiktok/app-integration:/fixture:ro
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./prisma:/app/prisma:ro
+      - ${TIKTOK_APP_OUTPUT:?New evidence}:/control
+    tmpfs: ['/tmp:size=32m,uid=1000,gid=1000,nosuid', '/media:size=64m,uid=1000,gid=1000,nosuid,noexec', '/app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec']
+    networks: [private]
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1
+    pids_limit: 160
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    depends_on: {postgres: {condition: service_healthy}, redis: {condition: service_healthy}}
+networks:
+  private: {internal: true, labels: *labels}

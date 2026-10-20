@@ -1,0 +1,5 @@
+node_modules
+dist
+docs/evidence
+package-lock.json
+PLAN_WORKFLOW_VIDEO_DOWNLOADER_V1.md

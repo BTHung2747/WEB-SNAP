@@ -1,0 +1,47 @@
+// Chosen from production source/plan BEFORE any HTTP run. Not derived from snapshot verdicts.
+export const cases=[
+ ['session-issued','GET session actual guest cookie/CSRF/DB row; local cookie flags, no secret log'],
+ ['ads-missing-cookie','403 SESSION_REQUIRED'],
+ ['ads-empty','200 null before own campaign'],
+ ['admin-get-unauthenticated','dashboard/settings/campaigns 403 ADMIN_REQUIRED'],
+ ['login-missing-guest','login403 SESSION_REQUIRED before rate/DB lookup despite supplied Origin/header'],
+ ['login-csrf-profiles','guest missingOrigin/wrongOrigin/noToken/headerWrong+bodyCorrect403 CSRF_INVALID'],
+ ['login-strict-header-body','header+extra csrf and bodyFallback-only both400 INVALID_REQUEST; strict input'],
+ ['login-invalid-password','short password400 INVALID_REQUEST'],
+ ['login-wrong-credentials','403 LOGIN_FAILED; bounded actual rate increment'],
+ ['login-success','201 ok/admin SetCookie; actual Redis token TTL3600 and actor; fifth rate-counted request'],
+ ['admin-get-admin-only','three GETs200 with adminCookie only, no guest/Origin/CSRF'],
+ ['admin-invalid-cookie','invalid signature403 ADMIN_REQUIRED'],
+ ['admin-write-auth-profiles','missing guest403 SESSION_REQUIRED; missing admin403 ADMIN_REQUIRED; Origin/token/priority403 CSRF_INVALID; no DB mutation'],
+ ['settings-put-success','17field strict valid PUT200; GET/DB readback/audit actor+settings.update'],
+ ['settings-validation-no-effects','invalid cap/fraction/missing/extra csrf/extra key/unverified400, settings/audit unchanged'],
+ ['campaign-validation-no-effects','strict extra csrf/title/weight/HTTPS/schedule/enum400; no campaign/audit insert'],
+ ['campaign-create-omitted-image','201 actual row, imageUrl null on omitted input, ISO dates/audit create'],
+ ['campaign-list','200 actual own campaign list, no auth guest required'],
+ ['campaign-update','200 full update/image HTTPS/weight/date, DB readback/audit update'],
+ ['campaign-invalid-id-before-auth','PUT/DELETE invalidUUID400 INVALID_REQUEST even without cookies, no effects'],
+ ['campaign-missing-row','PUT/DELETE wellformed absentUUID500 INTERNAL_ERROR, no invented404/audit'],
+ ['ads-query-projection','missing/banner/other queries200 banner projection, guest only/no CSRF'],
+ ['ads-sponsor-empty','sponsor query200 null without eligible sponsor; no cooldown fixture/race/expiry'],
+ ['event-auth-profiles','no guest403 SESSION_REQUIRED; Origin/token/header priority403 CSRF_INVALID, no event insert'],
+ ['event-validation-no-insert','strict extra csrf/invalidUUID/type400 INVALID_REQUEST, no event insert'],
+ ['event-unavailable','missing campaign404 CAMPAIGN_UNAVAILABLE, no event insert'],
+ ['event-success-dedupe','201 real event rows, sequential sameUUID retry leaves first impression, distinct click; rate below60'],
+ ['dashboard-fixtures','200 DB groups/events/queue0/Date/nullability/BigInt bytes+charged strings >MAX_SAFE_INTEGER; DB-only job/asset/lease aggregation fixtures'],
+ ['delete-token-profiles','missing CSRF and wrongHeader+correctBody403; campaign/audit retained'],
+ ['delete-header-extra-success','201 create second disabled campaign with explicit image null then200 DELETE valid header+arbitrary bodyextra, audit delete'],
+ ['delete-fallback-extra-success','200 DELETE main campaign using correct bodycsrf+extra/no header; DB deleted, event cascade/audit'],
+ ['logout-token-profiles','missingOrigin/noToken/wrongHeader+correctBody403, admin Redis key retained'],
+ ['logout-fallback-extra-success','201 correct bodycsrf+extra/no header, cookie cleared/admin key revoked'],
+ ['admin-after-logout','three admin-only GETs403 ADMIN_REQUIRED'],
+ ['logout-no-admin-header-extra','201 without admin cookie, guest+header CSRF/bodyextra allowed'],
+ ['logout-no-admin-body-extra','201 without admin cookie, guest+body CSRF/extra allowed'],
+] as const;
+export const operationSuccess=[
+ ['GET','/api/v1/ads',200],['POST','/api/v1/ad-events',201],['POST','/api/v1/admin/login',201],['POST','/api/v1/admin/logout',201],
+ ['GET','/api/v1/admin/dashboard',200],['GET','/api/v1/admin/settings',200],['PUT','/api/v1/admin/settings',200],
+ ['GET','/api/v1/admin/campaigns',200],['POST','/api/v1/admin/campaigns',201],['PUT','/api/v1/admin/campaigns/{id}',200],['DELETE','/api/v1/admin/campaigns/{id}',200],
+] as const;
+export const limits={maxDuration:600,maxBytes:209715200,maxInputBytes:262144000,analyzeTimeout:30,prepareTimeout:180,sessionTtl:120,releaseGrace:30,readyTtl:600,sweepSeconds:30,leaseTtl:90,retryGrace:120,transferMax:1800,monthlyBytes:10737418240,diskStopPercent:80,queueLimit:20,acceptJobs:true,enabledPlatforms:['youtube']};
+export const maxRequests=100,requestDeadlineMs=5000,responseMaxBytes=65536;
+export const sources=['apps/api/src/main.ts','apps/api/src/app.module.ts','apps/api/src/openapi.ts','apps/api/src/controllers/admin.controller.ts','apps/api/src/controllers/ads.controller.ts','apps/api/src/controllers/session.controller.ts','apps/api/src/services/admin.service.ts','apps/api/src/services/ads.service.ts','apps/api/src/services/session.service.ts','apps/api/src/auth/session.ts','apps/api/src/validation.ts','apps/api/src/filters/safe-errors.filter.ts','apps/api/src/security/client-ip.ts','apps/api/src/security/rate-policy.ts','packages/shared/src/core.ts','prisma/schema.prisma','docs/openapi.json'];

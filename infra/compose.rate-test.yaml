@@ -1,0 +1,29 @@
+# Used ONLY with -p wed-snap-rate-test and compose.test.yaml.
+# Distinct DB name and Redis logical DB let the test guard reject other stacks.
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: wed_snap_rate_test
+  api:
+    image: wed-snap-rate-test:local
+    environment:
+      DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap_rate_test
+      REDIS_URL: redis://redis:6379/15
+      TRUSTED_PROXY_HOSTS: web
+  worker:
+    image: wed-snap-rate-test:local
+    environment:
+      DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap_rate_test
+      REDIS_URL: redis://redis:6379/15
+  web:
+    image: wed-snap-rate-test:local
+    environment:
+      DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Run scripts/init-env.ps1}@postgres:5432/wed_snap_rate_test
+      REDIS_URL: redis://redis:6379/15
+      APP_ORIGIN: http://localhost:5174
+      VERIFIED_PLATFORMS: youtube
+      MEDIA_ROOT: /media
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - test_media:/media

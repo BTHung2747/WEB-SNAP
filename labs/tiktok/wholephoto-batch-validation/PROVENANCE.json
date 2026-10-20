@@ -1,0 +1,6 @@
+{
+  "predecessor": "labs/tiktok/wholephoto-batch",
+  "change": "Typed/bounded receipt-trace validator and producer ownership/group facts; no policyC/deadline/admission/cap change",
+  "sourceCalls": 0,
+  "dependenciesInstalled": 0
+}

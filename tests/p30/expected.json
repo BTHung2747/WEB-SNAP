@@ -1,0 +1,8 @@
+{
+  "endpoint":"/api/v1/admin/ad-statistics",
+  "contract":{"window":{"from":"ISO UTC","to":"ISO UTC","timezone":"UTC"},"rows":[{"campaignId":"UUID","title":"string","impressions":"integer >=0","clicks":"integer >=0","ctrPercent":"number or null"}]},
+  "from":"2026-01-01T00:00:00.000Z","to":"2026-01-02T00:00:00.000Z",
+  "rows":[{"title":"p30-A","impressions":2,"clicks":3,"ctrPercent":150},{"title":"p30-B","impressions":0,"clicks":1,"ctrPercent":null}],
+  "rules":"Admin auth before query; both omitted or both present, strict scalar ISO timezone/calendar; [from,to), from<to, <=90x24h; default server now minus7x24h; read-only. Seed static timestamps, no aggregate doubles.",
+  "cases":["no-admin","utc-boundaries","offset-equivalence","empty-window-zero-rows","default-window","90-days","over-90-days","reversed","equal","missing-from","missing-to","invalid-calendar","no-timezone","duplicate","array","unknown","query-injection","unknown-event-excluded","read-only","admin-get-no-guest-no-csrf","old-contract-preserved","settings-campaign-control","browser-live-window","browser-invalid","browser-narrow-focus","race-new-window","race-logout","race-unmount"]
+}

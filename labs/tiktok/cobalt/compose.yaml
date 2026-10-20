@@ -1,0 +1,53 @@
+name: wed-snap-cobalt-tiktok-lab
+x-labels: &labels
+  com.wed-snap.lab: cobalt-tiktok
+  com.wed-snap.run: ${COBALT_RUN_ID:?Runner required}
+services:
+  egress:
+    image: sha256:8bc0a567955111ea3cfbab2dd3b14f40a602f2d10ac987e78eb465f9d48d7f10
+    pull_policy: never
+    container_name: wed-snap-cobalt-egress
+    labels: *labels
+    networks: [private, outbound]
+    read_only: true
+    user: '65534:65534'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 64
+    restart: 'no'
+  resolver:
+    image: ${COBALT_IMAGE:?Pinned lab image}
+    pull_policy: never
+    container_name: wed-snap-cobalt-resolver
+    labels: *labels
+    networks: [private]
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 0.75
+    pids_limit: 96
+    restart: 'no'
+    command: [/usr/bin/timeout, --signal=KILL, 225s, python3, /lab/src/candidate_entry.py, '${COBALT_INPUT:?Sample required}', '${COBALT_EXPECTED_ID:?Expected video ID required}']
+    environment:
+      MEDIA_PROXY: http://egress:8888
+      HOME: /tmp
+      PYTHONDONTWRITEBYTECODE: '1'
+    volumes:
+      - type: bind
+        source: ${COBALT_SOURCE:?Lab source required}
+        target: /lab/src
+        read_only: true
+      - type: bind
+        source: ${COBALT_OUTPUT:?New evidence required}
+        target: /out
+    tmpfs: ['/tmp:size=64m,noexec,nosuid']
+    depends_on: [egress]
+networks:
+  private: {internal: true, labels: *labels}
+  outbound: {labels: *labels}

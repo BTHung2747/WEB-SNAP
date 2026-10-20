@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "sourceGrant": false,
+  "sourceExecutionStarted": false,
+  "executableSourceEntry": "source_entry.py returns78 unconditionally before IO/network",
+  "target": "https://www.tiktok.com/@adne_la.veil/photo/7678209751167110421",
+  "expectedBodyID": "7678209751167110421",
+  "selectedIndex": 2,
+  "expectedImageCountHistorical": 5,
+  "historicalSnapshot": "8fa38af83f8dc423d4d78b8044d5d7b26ae3fdef9ec73eab59fe04f8475c2127",
+  "futureTopologyOnly": {
+    "appNetworks": ["new-private-internal"],
+    "DBRedisNetworks": ["new-private-internal"],
+    "proxyNetworks": ["new-private-internal", "external-egress-NOT_CREATED_OR_SUPPORTED_BY_THIS_RUNNER"],
+    "controlNetworks": "exact newly-created internal CIDR, never external CIDR/catchall",
+    "secret": "new64hex in RAM, never main env or evidence",
+    "sourceImport": "Python isolated import checked; no offline fixture path/CA/DNS/ObservedLoop",
+    "sourceModeStatus": "REQUIRES_EXACT_FINGERPRINT_REVIEW_AND_NEW_EXPLICIT_SOURCE_TASK"
+  }
+}

@@ -1,0 +1,38 @@
+name: wed-snap-contract-admin-lab
+services:
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    environment:
+      P26_GUARD: wed-snap-contract-admin-lab
+      P26_SOURCE_SHA: ${WED_ADMIN_CONTRACT_SHA:?Use scripts/test-admin-contract.ps1}
+      DATABASE_URL: postgresql://p26@127.0.0.1:9/wed_snap_admin_contract_unused
+      REDIS_URL: redis://127.0.0.1:9/13
+      MEDIA_ROOT: /media
+      APP_ORIGIN: http://p26.invalid
+      ADMIN_SESSION_SECRET: p26-docs-public-fixture-not-production-secret
+      VERIFIED_PLATFORMS: youtube
+      NODE_OPTIONS: --max-old-space-size=384
+    network_mode: none
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p26:/app/tests/p26:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./docs/openapi.json:/app/docs/openapi.json:ro
+    tmpfs:
+      - /tmp:size=32m,uid=1000,gid=1000,nosuid
+      - /media:size=1m,uid=1000,gid=1000,nosuid,noexec
+      - /app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+
+

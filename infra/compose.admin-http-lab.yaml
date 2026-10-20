@@ -1,0 +1,63 @@
+name: wed-snap-admin-http-lab
+services:
+  db:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    environment:
+      POSTGRES_USER: p27
+      POSTGRES_DB: wed_snap_admin_http_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [http_db:/var/lib/postgresql/data]
+    networks: [lab]
+    mem_limit: 192m
+    cpus: 0.5
+    pids_limit: 64
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [http_redis:/data]
+    networks: [lab]
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    environment:
+      P27_GUARD: wed-snap-admin-http-lab
+      P27_SOURCE_SHA: ${WED_ADMIN_HTTP_SHA:?Use scripts/test-admin-http.ps1}
+      DATABASE_URL: postgresql://p27@db:5432/wed_snap_admin_http_test
+      REDIS_URL: redis://redis:6379/15
+      MEDIA_ROOT: /tmp/p27-no-media
+      APP_ORIGIN: http://p27.local
+      VERIFIED_PLATFORMS: youtube
+      TRUSTED_PROXY_HOSTS: ''
+      COOKIE_SECURE: 'false'
+      ADMIN_SESSION_SECRET: p27-unused-sentinel-replaced-in-test-memory
+      NODE_OPTIONS: --max-old-space-size=384
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p27:/app/tests/p27:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./docs/openapi.json:/app/docs/openapi.json:ro
+    tmpfs:
+      - /tmp:size=32m,uid=1000,gid=1000,nosuid
+      - /app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec
+    networks: [lab]
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  lab:
+    internal: true
+volumes:
+  http_db:
+  http_redis:

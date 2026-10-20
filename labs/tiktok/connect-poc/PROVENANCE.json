@@ -1,0 +1,55 @@
+{
+  "files": [
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs-2.7.1.dist-info/WHEEL",
+      "sha256": "10612f4a984562a5cab36dfe91005ec8da093f59eb4fc649290a22e69e4360bf"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs-2.7.1.dist-info/RECORD",
+      "sha256": "2f3b3c859a9e2782f2b1a98f3e4ba1e52110a768e01339b7f53ed23c1dda22e7"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs-2.7.1.dist-info/METADATA",
+      "sha256": "e68d1bf48aec9dcc2767343dedec25e12860085cba180e10bc3d3bdd031602ba"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs-2.7.1.dist-info/licenses/LICENSE",
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/__init__.py",
+      "sha256": "f30fbf99f793ec71ad6db3c5283821a6bf0e1ac436537ff27d9097027674442b"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/_staggered.py",
+      "sha256": "6a3ddc4b01c40d7f3c50c7cef5b51abbdb5fad102cce18e0f7d76910c8803863"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/utils.py",
+      "sha256": "c051d5f1ea4632a22b0bda6aa1f4cee2a968065775e063ef55be52a5bdb91c92"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/types.py",
+      "sha256": "ffc2661c58b1e8c78cd5eee144fec195e11a1b2f771acc06b7342fd3af33298f"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/py.typed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "labs/tiktok/connect-poc/vendor/aiohappyeyeballs/impl.py",
+      "sha256": "eb32b7ba4aa27993fe187deb56cf16af8dfcb4fbfe63b4f5846802ca02a64bb2"
+    }
+  ],
+  "license": "PSF-2.0",
+  "commit": "4dfc926e30eea8d24c1a71602d73c0e9a895c191",
+  "tagObject": "be824dea5fac3a24aa64e785f2a26d00d6714b7f",
+  "tag": "v2.7.1",
+  "version": "2.7.1",
+  "packageURL": "https://files.pythonhosted.org/packages/71/43/1947f06babed6b3f1d7f38b0c767f52df66bfb2bc10b468c4a7de9eceff2/aiohappyeyeballs-2.7.1-py3-none-any.whl",
+  "runtimeDependencies": [],
+  "name": "aiohappyeyeballs",
+  "author": "J. Nick Koston and contributors",
+  "modifications": "Unmodified official wheel; sourceRO PYTHONPATH only in new lab",
+  "packageSHA256": "9243213661e29250eb41368e5daa826fc017156c3b8a11440826b2e3ed376472"
+}

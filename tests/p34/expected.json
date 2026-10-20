@@ -1,0 +1,26 @@
+{
+  "policy": "New policy only actor=worker AND action=worker.metrics; not a pre-existing general AuditLog TTL",
+  "clock": "2026-10-04T00:00:00.000Z",
+  "cutoff": "2026-09-04T00:00:00.000Z",
+  "ttlMs": 2592000000,
+  "maxBatch": 500,
+  "index": "AuditLog_actor_action_createdAt_id_idx",
+  "indexColumns": ["actor", "action", "createdAt", "id"],
+  "cases": [
+    "composite-index-only-addition",
+    "strict-boundary-and-group-preservation",
+    "boundary-repeat-idempotent",
+    "helper-first500-stable-order",
+    "helper-second1",
+    "helper-third0-no-effects",
+    "recheck-createdAt-row-lock",
+    "recheck-actor-row-lock",
+    "recheck-action-row-lock",
+    "actual-sweep-first500",
+    "actual-sweep-second1",
+    "actual-sweep-third0-no-effects",
+    "outside-models-media-budget-preserved"
+  ],
+  "baseline": "Same desired policy assertions on unmodified production sweep. Missing policy/index are expected-negative, not claim main is full. Row-lock recheck cases SKIP because no AuditLog DELETE path exists.",
+  "stubs": ["explicit helper now final; Global Date only around baseline unmodified sweep deterministic calls", "own marker34 rows", "no HTTP/business/Prisma doubles; actual manual sweep real clock with >=1 day margins"]
+}

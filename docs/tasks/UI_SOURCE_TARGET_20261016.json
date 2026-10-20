@@ -1,0 +1,23 @@
+{
+  "schema": "wed-source-target-selection-v1",
+  "userReply": "Dùng lại bài ảnh công khai đã kiểm trước đây",
+  "targetSelectionConfirmed": true,
+  "canonicalURL": "https://www.tiktok.com/@adne_la.veil/photo/7678209751167110421",
+  "expectedPostID": "7678209751167110421",
+  "selectedIndex": 2,
+  "selectedIndexBasis": "DEFAULT_FROM_ACCEPTED_PRIOR_PHOTO2_SCOPE",
+  "targetAuthority": {
+    "path": "labs/tiktok/photo-source-fixed/run.ps1",
+    "sha256": "b1b606f2e6d9797d5cc34aaf16794905a53d822b56cd13f2b6ee0fb8ab10e6e7",
+    "acceptedReview": "docs/evidence/tiktok-photo-source-fixed-live-review-20261015/ASSESSMENT.md"
+  },
+  "scope": "ONE_PRIOR_PUBLIC_POST_ONE_SELECTED_PHOTO_ONLY",
+  "executionState": "HOLD_PENDING_BACKEND_GLUE_REVIEW_AND_NEW_LAUNCH_INSTRUCTION",
+  "executionPermittedByThisRecord": false,
+  "reuseOldGrantOrClaim": false,
+  "newLiveGrantCreated": false,
+  "newLiveClaimCreated": false,
+  "newLiveRunID": null,
+  "sourceCalls": 0,
+  "note": "Lựa chọn mẫu của chủ, không phải runtime grant. Không ghim số lượng ảnh/dimensions/SHA cũ; fresh metadata phải còn đúng bài và index2, nếu không thì dừng. Chưa kích hoạt nguồn, main, gallery hoặc deploy."
+}

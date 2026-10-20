@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Hai phương án prototype thiết kế lại giao diện WED SNAP." />
+    <title>WED SNAP | So sánh hai hướng thiết kế</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+        background: #eceae5;
+        color: #1d201e;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; }
+      a { color: inherit; }
+      .skip { position: fixed; left: 1rem; top: 1rem; transform: translateY(-180%); background: #fff; padding: .8rem 1rem; z-index: 2; }
+      .skip:focus { transform: none; }
+      main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 72px; }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 72px; }
+      .brand { font-size: 1.1rem; font-weight: 800; letter-spacing: -.04em; }
+      .status { color: #5e645f; font-size: .9rem; }
+      h1 { max-width: 850px; margin: 0; font-size: clamp(2.8rem, 7vw, 6.7rem); line-height: .92; letter-spacing: -.075em; text-wrap: balance; }
+      .lead { max-width: 630px; margin: 30px 0 48px; color: #555c56; font-size: 1.12rem; line-height: 1.65; }
+      .choices { display: grid; grid-template-columns: 1.12fr .88fr; gap: 20px; }
+      article { min-height: 410px; padding: 34px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 28px; }
+      .a { background: #f9f4ea; border: 1px solid #d5c8b9; color: #27221d; }
+      .b { background: #111713; border: 1px solid #2b3931; color: #f0f6f1; }
+      .tag { font-size: .78rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+      article h2 { margin: 22px 0 12px; font-size: clamp(2rem, 3vw, 3.5rem); line-height: .98; letter-spacing: -.055em; }
+      article p { max-width: 52ch; margin: 0; line-height: 1.55; color: inherit; opacity: .72; }
+      .palette { display: flex; gap: 8px; margin-top: 28px; }
+      .swatch { width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgb(0 0 0 / .12); }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 36px; }
+      .button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; border-radius: 12px; text-decoration: none; font-weight: 720; transition: transform .2s ease, background .2s ease; }
+      .button:hover { transform: translateY(-2px); }
+      .button:active { transform: translateY(1px); }
+      .a .primary { background: #b63d18; color: #fff; }
+      .a .secondary { border: 1px solid #b8a99a; }
+      .b .primary { background: #82e7ba; color: #101712; }
+      .b .secondary { border: 1px solid #415047; }
+      :focus-visible { outline: 3px solid #3969e8; outline-offset: 4px; }
+      footer { margin-top: 48px; color: #626762; font-size: .9rem; }
+      @media (max-width: 760px) {
+        main { padding-top: 28px; }
+        header { margin-bottom: 52px; align-items: flex-start; flex-direction: column; gap: 8px; }
+        h1 { font-size: clamp(3rem, 15vw, 4.7rem); }
+        .lead { margin: 24px 0 36px; }
+        .choices { grid-template-columns: 1fr; }
+        article { min-height: 390px; padding: 26px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Bỏ qua đến nội dung</a>
+    <main id="main">
+      <header>
+        <div class="brand">WED SNAP</div>
+        <div class="status">Prototype thiết kế, không kết nối backend</div>
+      </header>
+      <h1>Hai cách để WED SNAP rõ nét hơn.</h1>
+      <p class="lead">Cả hai hướng đều đưa thao tác dán link lên trước, giữ đầy đủ trạng thái và mở rộng được sang quản trị. Hướng A là đề xuất ưu tiên.</p>
+      <section class="choices" aria-label="Hai phương án thiết kế">
+        <article class="a">
+          <div>
+            <span class="tag">Đề xuất ưu tiên</span>
+            <h2>A. Studio sáng</h2>
+            <p>Ấm, rõ, bất đối xứng. Form nổi bật cạnh thông điệp ngắn và vùng nội dung có nhịp biên tập.</p>
+            <div class="palette" aria-label="Bảng màu hướng A">
+              <span class="swatch" style="background:#f7f1e7"></span>
+              <span class="swatch" style="background:#2b241f"></span>
+              <span class="swatch" style="background:#b63d18"></span>
+            </div>
+          </div>
+          <div class="actions">
+            <a class="button primary" href="a/index.html">A · Desktop</a>
+            <a class="button secondary" href="preview.html?theme=a">A · Mobile 390</a>
+            <a class="button secondary" href="a/admin.html">Xem quản trị A</a>
+          </div>
+        </article>
+        <article class="b">
+          <div>
+            <span class="tag">Phương án so sánh</span>
+            <h2>B. Studio tối</h2>
+            <p>Một bàn thao tác gọn. Thanh lệnh, vùng xem trước và lựa chọn nằm trong cùng không gian làm việc.</p>
+            <div class="palette" aria-label="Bảng màu hướng B">
+              <span class="swatch" style="background:#111713"></span>
+              <span class="swatch" style="background:#eef4ef"></span>
+              <span class="swatch" style="background:#82e7ba"></span>
+            </div>
+          </div>
+          <div class="actions">
+            <a class="button primary" href="b/index.html">B · Desktop</a>
+            <a class="button secondary" href="preview.html?theme=b">B · Mobile 390</a>
+            <a class="button secondary" href="b/admin.html">Xem quản trị B</a>
+          </div>
+        </article>
+      </section>
+      <footer>WED SNAP UI Redesign v1 · Chỉ dùng để chọn hướng trình bày. <a href="DESIGN.md">Đọc ghi chú thiết kế</a> · <a href="/evidence/index.html">Ảnh desktop/mobile đã kiểm</a></footer>
+    </main>
+  </body>
+</html>

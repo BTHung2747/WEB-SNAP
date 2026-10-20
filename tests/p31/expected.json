@@ -1,0 +1,18 @@
+{
+  "clock": "2026-10-04T12:00:00.000Z",
+  "cutoff": "2026-09-04T12:00:00.000Z",
+  "ttlDays": 30,
+  "maxBatch": 500,
+  "batchExpired": 501,
+  "batchFirstDeleted": 500,
+  "batchFirstResidual": 1,
+  "batchSecondDeleted": 1,
+  "batchThirdDeleted": 0,
+  "types": ["impression", "click", "unknown"],
+  "boundaryDeleted": 3,
+  "boundaryRetained": 5,
+  "batchStatsBefore": {"impressions":167,"clicks":167,"ctrPercent":100},
+  "batchStatsAfterFirst": {"impressions":0,"clicks":0,"ctrPercent":null},
+  "rules": "Existing strict createdAt<UTC now-30x24h applies to every type; keep exact cutoff. One batch ordered createdAt/id, no more than500, selected ids only and same cutoff rechecked. Deterministic helper clock separately declared; actual sweep uses real clock+1day margins. DB/HTTP production, no Prisma/aggregate verdict doubles.",
+  "cases": ["strict-boundary-all-types","boundary-repeat-idempotent","http-admin-before","batch-first500-stable-order","http-retained-after-first","batch-second-remainder1","batch-no-eligible-idempotent","same-cutoff-row-lock-recheck","actual-sweep-first500","actual-sweep-second1","actual-sweep-idempotent","outside-models-media-no-effects"]
+}

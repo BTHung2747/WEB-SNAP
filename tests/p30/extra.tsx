@@ -1,0 +1,17 @@
+import React from 'react';import {createRoot} from 'react-dom/client';import Admin from '../../apps/web/src/pages/Admin';import {api} from '../../apps/web/src/lib/api';import expected from './extra-expected.json';
+import '../../apps/web/src/style.css';import '../../apps/web/src/styles/admin.css';import '../../apps/web/src/styles/home.css';import '../../apps/web/src/styles/layout.css';import '../../apps/web/src/styles/legal.css';import '../../apps/web/src/styles/responsive.css';
+const root=createRoot(document.getElementById('root')!),host=document.getElementById('root')!;let session:any;
+const pause=()=>new Promise<void>(r=>setTimeout(r,25));const assert=(v:unknown,m:string)=>{if(!v)throw Error(m);};
+async function until(fn:()=>boolean){const end=performance.now()+8000;while(!fn()){if(performance.now()>end)throw Error('Deadline');await pause();}}
+const b=(s:string)=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent?.trim()===s)!;
+async function fill(label:string,value:string){const i=[...host.querySelectorAll('label')].find(l=>l.textContent?.trim()===label)!.querySelector('input')!;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(i,value);i.dispatchEvent(new Event('input',{bubbles:true}));await pause();}
+const tool=document.createElement('button');tool.textContent='Chạy error controls30';document.getElementById('tools')!.append(tool);
+async function test(name:keyof typeof expected,fn:()=>Promise<any>){let result:any;try{result={name,expected:expected[name],result:'PASS',evidence:await fn()};}catch(e){result={name,expected:expected[name],result:'FAIL',error:(e as Error).message};}await fetch('/__p30/record',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'case',...result,transportDoubles:[]})});if(result.result==='FAIL')throw Error(result.error);}
+tool.onclick=()=>{tool.disabled=true;void(async()=>{
+ await until(()=>!!host.querySelector('.admin-tabs'));b('Quảng cáo').click();await until(()=>!!host.querySelector('.ad-window-label'));
+ await test('server-invalid-window',async()=>{await fill('Từ (ISO có múi giờ)','2026-01-01T00:00:00');await fill('Đến (ISO có múi giờ)','2026-01-02T00:00:00Z');b('Xem thống kê').click();await until(()=>!!host.querySelector('[role=alert]'));assert(host.textContent?.includes('Khoảng thời gian không hợp lệ.'),'server error message');assert(!host.querySelector('.ad-window-label'),'window cleared');return {alert:host.querySelector('[role=alert]')?.textContent};});
+ await test('default-button',async()=>{b('7 ngày gần nhất').click();await until(()=>!!host.querySelector('.ad-window-label'));assert([...host.querySelectorAll('.ad-window input')].every(i=>(i as HTMLInputElement).value===''),'inputs cleared');return {window:host.querySelector('.ad-window-label')?.textContent};});
+ await test('expired-admin-statistics',async()=>{await api('admin/logout',session.csrf,'POST');b('7 ngày gần nhất').click();await until(()=>!!host.querySelector('.admin-login'));assert(host.textContent?.includes('Phiên quản trị đã hết hạn.'),'expired admin message');assert(!host.querySelector('.ad-window-label'),'no old stats');return {login:true,alert:host.querySelector('[role=alert]')?.textContent};});
+ root.unmount();tool.textContent='Chạy error controls30 PASS';
+})().catch(e=>{tool.textContent='Chạy error controls30 FAIL '+e.message;}).finally(()=>tool.disabled=false);};
+void(async()=>{session=await api('session','');root.render(<Admin session={session}/>);})();

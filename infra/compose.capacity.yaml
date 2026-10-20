@@ -1,0 +1,12 @@
+# Only a one-off API test container; do not use up with this override.
+services:
+  api:
+    volumes: !override
+      - type: tmpfs
+        target: /media
+        tmpfs: { size: 8388608, mode: 1023 } # 01777 as a decimal integer
+      - ./apps/api/src:/app/apps/api/src:ro
+      - ./apps/worker/src:/app/apps/worker/src:ro
+      - ./packages/shared/src:/app/packages/shared/src:ro
+      - ./tests:/app/tests:ro
+      - ./prisma:/app/prisma:ro

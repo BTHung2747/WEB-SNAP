@@ -1,0 +1,8 @@
+{
+  "predecessor": "labs/tiktok/trace-cleanup",
+  "stock": "apps/egress/src/egress.py",
+  "originalPinSHA": "bfc235a5e7ba6fe9ad667333324039d0b0b45c490f1b4c9f41a6481687e6f863",
+  "photo": "labs/tiktok/photo",
+  "sourceChanges": "Offline integration glue/hostnameRAM helper; no old code edits",
+  "vendor": "labs/tiktok/connect-poc/vendor"
+}

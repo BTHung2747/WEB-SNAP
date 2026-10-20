@@ -1,0 +1,66 @@
+name: wed-snap-cleanup-lab
+services:
+  db:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    environment:
+      POSTGRES_USER: p23
+      POSTGRES_DB: wed_snap_cleanup_test
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [cleanup_db:/var/lib/postgresql/data]
+    networks: [lab]
+    mem_limit: 192m
+    cpus: 0.5
+    pids_limit: 64
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [cleanup_redis:/data]
+    networks: [lab]
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+  lab:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    environment:
+      P23_GUARD: wed-snap-cleanup-lab
+      P22_GUARD: wed-snap-metadata-lab
+      P22_SOURCE_SHA: ${WED_CLEANUP_LAB_SHA:?Use scripts/test-cleanup.ps1}
+      DATABASE_URL: postgresql://p23@db:5432/wed_snap_cleanup_test
+      REDIS_URL: redis://redis:6379/14
+      MEDIA_ROOT: /media
+      APP_ORIGIN: http://p22.local
+      VERIFIED_PLATFORMS: youtube
+      ADMIN_SESSION_SECRET: p22-isolated-fixture-not-a-production-secret
+      NODE_OPTIONS: --max-old-space-size=384
+    user: node
+    read_only: true
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./apps/worker:/app/apps/worker:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p22:/app/tests/p22:ro
+      - ./tests/p23:/app/tests/p23:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./tests/p22/fixture_adapter.py:/app/infra/media_adapter.py:ro
+    tmpfs:
+      - /tmp:size=128m,uid=1000,gid=1000,nosuid
+      - /media:size=16m,uid=1000,gid=1000,nosuid
+      - /app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec
+    networks: [lab]
+    mem_limit: 640m
+    cpus: 0.75
+    pids_limit: 96
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+networks:
+  lab:
+    internal: true
+volumes:
+  cleanup_db:
+  cleanup_redis:
+

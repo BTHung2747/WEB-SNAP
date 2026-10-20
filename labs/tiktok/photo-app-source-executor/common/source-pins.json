@@ -1,0 +1,514 @@
+[
+  {
+    "sha256": "980c620510ab80c0f7ace6daa7b10b5ef4ddc5aef37b99a0048d49d64fdb283a",
+    "path": "apps/api/src/app.module.ts"
+  },
+  {
+    "sha256": "f8ef2ae537f8670ad777aac8377861adfdb50736e8a6dbe8ed80e8cfd6657b6c",
+    "path": "apps/api/src/auth/session.ts"
+  },
+  {
+    "sha256": "980f1a4ba3747ff0302b383c047e872a627546f945bcd9f3380cac0df86b61fc",
+    "path": "apps/api/src/common.ts"
+  },
+  {
+    "sha256": "73e5ed298cf51fa56eb9aa01fa833071ce1aad4926c20611b2ff645d11927c35",
+    "path": "apps/api/src/controllers/admin.controller.ts"
+  },
+  {
+    "sha256": "86ae30a42e17c7d43de506a4ae386fb1642c82e69135259c99334bf7fbb08418",
+    "path": "apps/api/src/controllers/ads.controller.ts"
+  },
+  {
+    "sha256": "b16722034f1592bd2d92fab42a41087c569e765c7eb258b058378ace14e81894",
+    "path": "apps/api/src/controllers/downloads.controller.ts"
+  },
+  {
+    "sha256": "9de14cc9acd3a58ca5e5094fb09605cb900eebde38ca4ad5f4e48303f8a5001d",
+    "path": "apps/api/src/controllers/jobs.controller.ts"
+  },
+  {
+    "sha256": "6430edb736c9cb12bdb3be0da110796acbc05a58bad9caa052060fa0d1a9bd31",
+    "path": "apps/api/src/controllers/session.controller.ts"
+  },
+  {
+    "sha256": "ba85722797792eb86f97f4b7371119d5114feb8ac637c550af52169248af5d65",
+    "path": "apps/api/src/filters/safe-errors.filter.ts"
+  },
+  {
+    "sha256": "ee3980bca2a73d89d1c067812049abd6a219a3764b9caac85aab48b5868eefc1",
+    "path": "apps/api/src/main.ts"
+  },
+  {
+    "sha256": "5b741e85f3eb4b120d0301b46c194ea0e0b040243b0363bd1bced9a297b7dbe0",
+    "path": "apps/api/src/openapi.ts"
+  },
+  {
+    "sha256": "a77bea84469b2f976e5016fd42b54e6906b633c50df376bfd7531af1eb7f92cb",
+    "path": "apps/api/src/security/client-ip.ts"
+  },
+  {
+    "sha256": "9930b9636d789241e0216c585edfd48cee47879665f63c9659688d4587a04e34",
+    "path": "apps/api/src/security/rate-policy.ts"
+  },
+  {
+    "sha256": "37a6977549e57c801d8452feaf4cab88401e71c9e56d83b651424417df28c5d0",
+    "path": "apps/api/src/services/admin.service.ts"
+  },
+  {
+    "sha256": "9f0944352c3cfd3778d7f83071e6c74f43affdfabf42f063c46fd9ee5811c436",
+    "path": "apps/api/src/services/admission.ts"
+  },
+  {
+    "sha256": "85a82d0ecdc0b0980b0021570440390fab0ff1a3e707648f852091f97fb96fc1",
+    "path": "apps/api/src/services/ads.service.ts"
+  },
+  {
+    "sha256": "2cc983237f54876a0f9082d0ba09c789c58dab8f828283d4874827f52c5d4873",
+    "path": "apps/api/src/services/downloads.service.ts"
+  },
+  {
+    "sha256": "0843e2b225d4a4139c1a17948fc6e86a303c898623e43fee2d2cee11e35e5cf6",
+    "path": "apps/api/src/services/jobs.service.ts"
+  },
+  {
+    "sha256": "fdcc814194dd54d9ccf181a790a39409be4cd133abf9ee44e142e5d0486601dd",
+    "path": "apps/api/src/services/session.service.ts"
+  },
+  {
+    "sha256": "addec6256ebb1956fbb651dd3ee4b117f99d49ce96ab2dde34dd1c1c3fb86700",
+    "path": "apps/api/src/validation.ts"
+  },
+  {
+    "sha256": "04633cf198872dfff221d14e3c648959cb06ab0d75aee4efc76a0b63383d6dea",
+    "path": "apps/egress/Dockerfile"
+  },
+  {
+    "sha256": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+    "path": "apps/egress/LICENSE"
+  },
+  {
+    "sha256": "4c47327b0e6a7b61bea05752db5e9dcc4092e05ded13c636640ed3fff73ab749",
+    "path": "apps/egress/NOTICE.md"
+  },
+  {
+    "sha256": "afc4376846375a30dca5305b202eeaa2ac70e7a5986f45ab486df63add3090ba",
+    "path": "apps/egress/PROVENANCE.json"
+  },
+  {
+    "sha256": "77da7d33dccf9b81506eaf02370811517523f76841a59fe4f8703f99ce011c1d",
+    "path": "apps/egress/README.md"
+  },
+  {
+    "sha256": "c7f08806574cec902b38759968d5ecdcf5a2c248ad28eea2dfd612cd6df54ecd",
+    "path": "apps/egress/src/egress.py"
+  },
+  {
+    "sha256": "79451b87daa0c862324a026e20f6d817bb302c7e55bf2ad4a218cb5d9e83922a",
+    "path": "apps/egress/src/tiktok_policy/__init__.py"
+  },
+  {
+    "sha256": "c51726cb4b60c66275aee1fcd96ac84e48f78269248283efd79c69ea005b3d21",
+    "path": "apps/egress/src/tiktok_policy/batch_policy.py"
+  },
+  {
+    "sha256": "c280db8761fe3b1544cf76d969ecc77cfddb6d1352232f466557282d1e4b76d3",
+    "path": "apps/egress/src/tiktok_policy/batch_validation.py"
+  },
+  {
+    "sha256": "564d1889566daf2aeeff5027dbe89e7ee76b830c329a38db8ccbf4a6bc3954e6",
+    "path": "apps/egress/src/tiktok_policy/candidate.py"
+  },
+  {
+    "sha256": "c1113fb11d0b00a0ddd3510bafcde6ecbf0e3573cecb05e61990d20bdc184d3f",
+    "path": "apps/egress/src/tiktok_policy/control.py"
+  },
+  {
+    "sha256": "c672d31f45658406c4761f4b52e4d8d396045fe3fbd379300d751c76d96e642a",
+    "path": "apps/egress/src/tiktok_policy/dns_admission.py"
+  },
+  {
+    "sha256": "31cf79bda52587187acd89ad2965069761f6b03f6b890d81129dcfc79fed9ed3",
+    "path": "apps/egress/src/tiktok_policy/dns_counts.py"
+  },
+  {
+    "sha256": "1a7a124ddbe4a53740b96fe56f613c7475acd3741651872f1bce69a8c11480a0",
+    "path": "apps/egress/src/tiktok_policy/dns_diagnostic.py"
+  },
+  {
+    "sha256": "5ed38c98b9e52f4e1f05ca560965d5e081505c1de9a245757017707572859487",
+    "path": "apps/egress/src/tiktok_policy/dns_helper.py"
+  },
+  {
+    "sha256": "0f45720271c4d057c42eea953b3a5007af5f47f9974db9ff586714e8762386d5",
+    "path": "apps/egress/src/tiktok_policy/dns_ipc.py"
+  },
+  {
+    "sha256": "e11b00dab0ee9f298f6cff9f549a4f2b5053d6b54e645296b9a31d26fe0baadd",
+    "path": "apps/egress/src/tiktok_policy/operation_coverage.py"
+  },
+  {
+    "sha256": "2a5b1cd76ec9094d24f4cc8d55f3b88d6933c58e60464e799fa47bec7e7ca05e",
+    "path": "apps/egress/src/tiktok_policy/ownership.py"
+  },
+  {
+    "sha256": "0dafdd0d9fa70863d120124df6dd9266e910b5f1e24bc33ed586d670e4384ff8",
+    "path": "apps/egress/src/tiktok_policy/runtime.py"
+  },
+  {
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+    "path": "apps/egress/vendor/aiohappyeyeballs-2.7.1.dist-info/licenses/LICENSE"
+  },
+  {
+    "sha256": "e68d1bf48aec9dcc2767343dedec25e12860085cba180e10bc3d3bdd031602ba",
+    "path": "apps/egress/vendor/aiohappyeyeballs-2.7.1.dist-info/METADATA"
+  },
+  {
+    "sha256": "2f3b3c859a9e2782f2b1a98f3e4ba1e52110a768e01339b7f53ed23c1dda22e7",
+    "path": "apps/egress/vendor/aiohappyeyeballs-2.7.1.dist-info/RECORD"
+  },
+  {
+    "sha256": "10612f4a984562a5cab36dfe91005ec8da093f59eb4fc649290a22e69e4360bf",
+    "path": "apps/egress/vendor/aiohappyeyeballs-2.7.1.dist-info/WHEEL"
+  },
+  {
+    "sha256": "f30fbf99f793ec71ad6db3c5283821a6bf0e1ac436537ff27d9097027674442b",
+    "path": "apps/egress/vendor/aiohappyeyeballs/__init__.py"
+  },
+  {
+    "sha256": "6a3ddc4b01c40d7f3c50c7cef5b51abbdb5fad102cce18e0f7d76910c8803863",
+    "path": "apps/egress/vendor/aiohappyeyeballs/_staggered.py"
+  },
+  {
+    "sha256": "eb32b7ba4aa27993fe187deb56cf16af8dfcb4fbfe63b4f5846802ca02a64bb2",
+    "path": "apps/egress/vendor/aiohappyeyeballs/impl.py"
+  },
+  {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "path": "apps/egress/vendor/aiohappyeyeballs/py.typed"
+  },
+  {
+    "sha256": "ffc2661c58b1e8c78cd5eee144fec195e11a1b2f771acc06b7342fd3af33298f",
+    "path": "apps/egress/vendor/aiohappyeyeballs/types.py"
+  },
+  {
+    "sha256": "c051d5f1ea4632a22b0bda6aa1f4cee2a968065775e063ef55be52a5bdb91c92",
+    "path": "apps/egress/vendor/aiohappyeyeballs/utils.py"
+  },
+  {
+    "sha256": "e26551676ead50e70487243e1a5f03e33616e36247a79762ca099926009c18d8",
+    "path": "apps/egress/vendor/PINNED_HASHES.json"
+  },
+  {
+    "sha256": "08f556984195384b5df31eac6baa198037d7fce515d8c97a2bc75011e771a00a",
+    "path": "apps/media/src/media_adapter.py"
+  },
+  {
+    "sha256": "50fc18add1ab8e1612cb1c7d4208a2621137e8c739fadf76c04134225d7ee4a1",
+    "path": "apps/media/src/tiktok/__init__.py"
+  },
+  {
+    "sha256": "eea7ebfd372a8245dd6b68cb86efd683e971cae65d3035749e7b91f8adc67d4f",
+    "path": "apps/media/src/tiktok/adapter.py"
+  },
+  {
+    "sha256": "fed9b77b469b00b58282eae59daf96e84ee357a089673c299b872bcef01c0adc",
+    "path": "apps/media/src/tiktok/candidate_file.py"
+  },
+  {
+    "sha256": "57e6b8c5429ad2c50f97b5f25549cae5a9bf6beb803502ebb7175b2ba84547da",
+    "path": "apps/media/src/tiktok/connection_boundaries.py"
+  },
+  {
+    "sha256": "2fc391a1f7feaa28298c680d6d8a8d83606a76a7bd3948fe86e905810269d46f",
+    "path": "apps/media/src/tiktok/core.py"
+  },
+  {
+    "sha256": "6f385b0d80fab4b411f15fcbe63647d6fffb8e5edb0fe0100b8d56a96e5c6229",
+    "path": "apps/media/src/tiktok/INTEGRATION.md"
+  },
+  {
+    "sha256": "ebe435fddb16699248ec09087bfb121517701aac63b679315aec33eb05e4f404",
+    "path": "apps/media/src/tiktok/LICENSE"
+  },
+  {
+    "sha256": "3f96a83dd8dc6b669bf8fc4736ffd40e74b4bb305083968641a6554af95adf71",
+    "path": "apps/media/src/tiktok/NOTICE.md"
+  },
+  {
+    "sha256": "1109dc66374209b01ea834863d06c002400452958c7466e8b46d76a91588b362",
+    "path": "apps/media/src/tiktok/package-lock.json"
+  },
+  {
+    "sha256": "b72f2f86114b8c8600c9e3584cc96f466506a103b1035d437ecb232759a0e284",
+    "path": "apps/media/src/tiktok/package.json"
+  },
+  {
+    "sha256": "ba7a26f9b1037c3977ea1b6df9cc88dec26d92300b3346871e57c037cfcca624",
+    "path": "apps/media/src/tiktok/photo_adapter.py"
+  },
+  {
+    "sha256": "73a49cb6d14e2be78fa953fb02d46269f1fe2943f971caf9ec8416a42d5a5e81",
+    "path": "apps/media/src/tiktok/photo_contract.py"
+  },
+  {
+    "sha256": "c3e03843b51698cd9810b46e19939aefa2f98719def979f7e8b917e37fb18d70",
+    "path": "apps/media/src/tiktok/photo_core.py"
+  },
+  {
+    "sha256": "46b4affdefeed9b9b49804788c61555ade99bc6d2b1c53c8261ec2ca20ddb86f",
+    "path": "apps/media/src/tiktok/photo_file.py"
+  },
+  {
+    "sha256": "beb37978b68425ccf6855a5e7950644bbef052767357234d7bd6d342bbb63bee",
+    "path": "apps/media/src/tiktok/photo_picker.mjs"
+  },
+  {
+    "sha256": "d198b4a2e50b27e5f2d164c3c4c5ccafb8855d6466a6d533fcd00433bbe79674",
+    "path": "apps/media/src/tiktok/photo_proxy.py"
+  },
+  {
+    "sha256": "cf35e7f2e60636375501c2afec22e99a6f2ae9ef11a5776e8e673f5f7854dc79",
+    "path": "apps/media/src/tiktok/prepare_operations.py"
+  },
+  {
+    "sha256": "e984710ebecea665edf4b5fcd214c12ac9210e08cfe4ad2a3cf0d3a1db0a563b",
+    "path": "apps/media/src/tiktok/PROVENANCE.json"
+  },
+  {
+    "sha256": "4621861f0cadaecd9f5e50e8d85f66e61d0ebf740d172505f6b220ec6cf87496",
+    "path": "apps/media/src/tiktok/send_diagnostics.py"
+  },
+  {
+    "sha256": "f2a8b2cae68a32718aa8ff244a8a321ce26b859786f2140d8a419b685e7c53a9",
+    "path": "apps/media/src/tiktok/UPSTREAM.json"
+  },
+  {
+    "sha256": "5d709bed96698423cd83bbeef2af4ff347255aeab8755be744db7595223673d3",
+    "path": "apps/media/src/tiktok/validate_cobalt_body.mjs"
+  },
+  {
+    "sha256": "ba3ed6647198cdffb6785eac89b04089d071f0d81b8b1cdedd6fc9f1d1e40396",
+    "path": "apps/media/src/tiktok/vendor/config.js"
+  },
+  {
+    "sha256": "556566104c1b2cbea329d59027438b860fd40062a7bc154321053057d8f874ac",
+    "path": "apps/media/src/tiktok/vendor/cookie/cookie.js"
+  },
+  {
+    "sha256": "146dabbdab711001163ff4e19575418ef0fd07efdefbef763653898d7b8ae574",
+    "path": "apps/media/src/tiktok/vendor/cookie/manager.js"
+  },
+  {
+    "sha256": "fd560b7885f7890e5cdaa2597e114815524a52671e395fd9ea8a6ae142fce50e",
+    "path": "apps/media/src/tiktok/vendor/language-codes.js"
+  },
+  {
+    "sha256": "58f486ead19886c7daa9a3ab3bd7f9d4b540636cdc0c44efa0bb59035b99e07e",
+    "path": "apps/media/src/tiktok/vendor/service-alias.js"
+  },
+  {
+    "sha256": "33d28ac958a8df9222afbf4e44912570565391e00c97c9bb16328f5c69700d9b",
+    "path": "apps/media/src/tiktok/vendor/service-config.js"
+  },
+  {
+    "sha256": "1c0b34c69067a100547429fc93ce66211349f7c3aa94097d520ce6c845c44a07",
+    "path": "apps/media/src/tiktok/vendor/tiktok.js"
+  },
+  {
+    "sha256": "b79a6c2f013d078b467200f9fcf495ba622f2f74c77af508a3b6d134235621a2",
+    "path": "apps/media/src/tiktok/vendor/url.js"
+  },
+  {
+    "sha256": "a9ca69118098538ff33eb5fc606944a424ce9713e44213c110a747d676e82b38",
+    "path": "apps/web/index.html"
+  },
+  {
+    "sha256": "04925234a19466f597bdd140505b1faadde5d2a1e649c29b28595efefbc0a3af",
+    "path": "apps/web/package.json"
+  },
+  {
+    "sha256": "383c4a251d833e238c2706dfdac53ef829d576cb5a66a21649b37ad213705883",
+    "path": "apps/web/postcss.config.cjs"
+  },
+  {
+    "sha256": "725bfd511ac8e008a286f800fd38d5c52a95fc63a5c06a78210f2d80f3e828c0",
+    "path": "apps/web/src/App.tsx"
+  },
+  {
+    "sha256": "3bf3b4f15c0f88a39cbf24d349ca72959f93576025486c62b67c10d9e9d03a0e",
+    "path": "apps/web/src/components/Advertising.tsx"
+  },
+  {
+    "sha256": "fee71ac23d927a7e4691536d67f64f9544467dbea4aa490a30bd1f52d3c273f6",
+    "path": "apps/web/src/components/Footer.tsx"
+  },
+  {
+    "sha256": "80c24fd6d145e8e4c5144103a3f6af4f5431aa7d6dcff2caa39f6afa4ba218ff",
+    "path": "apps/web/src/components/Header.tsx"
+  },
+  {
+    "sha256": "fade0c5ff9f3ee0139c214a7d58cf17923e2dcf280f441471b5eee3bd060e017",
+    "path": "apps/web/src/components/Icon.tsx"
+  },
+  {
+    "sha256": "238e7ab262d15f5678698b07390d3772426f9fd21397a603631040ac759baba1",
+    "path": "apps/web/src/hooks/useDownloadLink.ts"
+  },
+  {
+    "sha256": "3beab27e2220408ec80afa14e7a8b6d47cf1b259a5e291d841f9fc2056b1c9c2",
+    "path": "apps/web/src/hooks/useJobLifecycle.ts"
+  },
+  {
+    "sha256": "204af1aeaf5a2ee51701011e7158d92fcf145ac4deeb6920ed4b2441d65f491f",
+    "path": "apps/web/src/hooks/useSession.ts"
+  },
+  {
+    "sha256": "0e91fe1219b78a285e0a30fbd0c0594b26cf14109e7186f81d240847b72b9ad5",
+    "path": "apps/web/src/lib/api.ts"
+  },
+  {
+    "sha256": "3ec5f823a3ccbd88cfc0a07e3044fde34e0f9e862dfdfcad2725998a96db1a81",
+    "path": "apps/web/src/lib/platforms.ts"
+  },
+  {
+    "sha256": "5c9fe65f237de0d44c2c63e91a4f31673554cc598b842f637148cd5c971428b0",
+    "path": "apps/web/src/main.tsx"
+  },
+  {
+    "sha256": "aebd98a813aff3c87dd94250741fef61d3d2f1dcd3a6531da4d9b4d58949a4f3",
+    "path": "apps/web/src/pages/Admin.tsx"
+  },
+  {
+    "sha256": "f7e2440e8f72641f533557851c109c3a386613253ee5686c7adf31d6c4a3c2fb",
+    "path": "apps/web/src/pages/Home.tsx"
+  },
+  {
+    "sha256": "f896ff741e9a834ba7e63d2a79f0045ae1a47ae4cec7de13bbd1d193eaf357b4",
+    "path": "apps/web/src/pages/Legal.tsx"
+  },
+  {
+    "sha256": "80b3fdf8b1c9298401594423541d5a40ca41ea95cf0ebf9f74fbdd3bebc385aa",
+    "path": "apps/web/src/style.css"
+  },
+  {
+    "sha256": "cf4d1ca66c48e71701b48da14b808394964ada27e157670097a41aa0f9a57944",
+    "path": "apps/web/src/styles/admin.css"
+  },
+  {
+    "sha256": "be28ae7db84a14bf69ae7044758588f2bed18f21879c1951211a9966c7d6325d",
+    "path": "apps/web/src/styles/home.css"
+  },
+  {
+    "sha256": "fd0adb86ca70676873fc5d78b054bb06e2bda0e20c0dd7f458153108005e05a7",
+    "path": "apps/web/src/styles/layout.css"
+  },
+  {
+    "sha256": "332a475b7ee018b434d6eda502f4ba89451cc6239869a1dcb042f50a8dcf0b62",
+    "path": "apps/web/src/styles/legal.css"
+  },
+  {
+    "sha256": "f9a4957aa6b37d616413df08d4b8bf8141dd1f28f15b00639aac2702ac1a2288",
+    "path": "apps/web/src/styles/responsive.css"
+  },
+  {
+    "sha256": "6e17c0ba6dbe62d7c6a963bd3b8e330ba26f7aeadc4887e6cb38b7ecf8a05d97",
+    "path": "apps/web/src/types.ts"
+  },
+  {
+    "sha256": "2c5556186ad342f53c145f352a1aa5fd25bee87f7ecf9be617cfb30f3c2aa036",
+    "path": "apps/web/tailwind.config.cjs"
+  },
+  {
+    "sha256": "cb118c22249b9af87126d199ae522e11ae6a105ccfd5003359f8c10e35f1eb41",
+    "path": "apps/web/tsconfig.json"
+  },
+  {
+    "sha256": "cc886f18dd4480117678cfe0cbfb61a71e8387a944711d5b6b68a39779a6c3a6",
+    "path": "apps/web/vite.config.ts"
+  },
+  {
+    "sha256": "c962b9af07d3d9934bd61b7ab07fbd7ccdbaf9b4d40e2fa469215c300a567889",
+    "path": "apps/worker/src/ad-event-retention.ts"
+  },
+  {
+    "sha256": "9b8c70576322238a355b788ccdf4795c9cf11e16995262e4d08dcae033010fd6",
+    "path": "apps/worker/src/adapter.ts"
+  },
+  {
+    "sha256": "2377ffad1a4540b3edd0b4fecf4e6e2373c6074020556b658a1035838419356e",
+    "path": "apps/worker/src/lifecycle.ts"
+  },
+  {
+    "sha256": "7d95c15bd65a1d27117eee38df9497bc2dbafb5dd9d287e1705d2d959a47ac0f",
+    "path": "apps/worker/src/main.ts"
+  },
+  {
+    "sha256": "7e581a92499613d7cdd18bb02adf99e35296e786fba91fad75dc48f782419666",
+    "path": "apps/worker/src/process-group.ts"
+  },
+  {
+    "sha256": "d76f177fd5b1db7ecf608e99d19246b1642e39e106926976646c5df65004e138",
+    "path": "apps/worker/src/process-registry.ts"
+  },
+  {
+    "sha256": "829d220be98a9ca7a9aa824a38295d71e05d9b86d432865c102b82c1f74e0b8d",
+    "path": "apps/worker/src/processor.ts"
+  },
+  {
+    "sha256": "e31d8a32cc8f7c65a8946d0034845058899f4cc3d7d44a0ee78556804e22fb75",
+    "path": "apps/worker/src/proxy-phase.ts"
+  },
+  {
+    "sha256": "eefe839672ce200b500847b9cf20cda7860ec70f5d26d1bc8aea63bc8bde60c9",
+    "path": "apps/worker/src/signal-process.py"
+  },
+  {
+    "sha256": "89e844d3f0c345a818735de507cbdda91080564c7f11eebdf2cf1ac5643bdda5",
+    "path": "apps/worker/src/worker-metrics-retention.ts"
+  },
+  {
+    "sha256": "6e7a8b038bbe86e1f2a5a3d21ebb5101d564fb5334626914217314a0b604474f",
+    "path": "package-lock.json"
+  },
+  {
+    "sha256": "69275fe8046435524f83038dbe0b6895d5664043b65175d23e99d207ccb269cd",
+    "path": "package.json"
+  },
+  {
+    "sha256": "1d83d01adaf0993aabc97452e7e1bc67621a7ff02fde00b25d8ef37adebb7df0",
+    "path": "packages/shared/src/core.ts"
+  },
+  {
+    "sha256": "7d4a669592876e5ee80c1e1d02ac75c324acd91b3bd7756c3a8d5f9ef2fb474d",
+    "path": "packages/shared/src/tiktok-photo.ts"
+  },
+  {
+    "sha256": "1c940c2d3ec4a058fd6adac6da518cb95363f2887064d4031095b24178c45e8e",
+    "path": "prisma/migrations/202609300001_init/migration.sql"
+  },
+  {
+    "sha256": "789934bc149ccec71c56e89c734eea7e1abdc565e8b25654af5c15fd49f66375",
+    "path": "prisma/migrations/202610030001_metadata_deadline/migration.sql"
+  },
+  {
+    "sha256": "61720c984dc810b9fb324f99ce430a10aab06cc3002a980b7620fd254563895d",
+    "path": "prisma/migrations/202610030002_cleanup_completed/migration.sql"
+  },
+  {
+    "sha256": "1a9489f7eec5999a823c966e947f086b22984196b0988cda01242957f33c289f",
+    "path": "prisma/migrations/202610040001_worker_metrics_retention_index/migration.sql"
+  },
+  {
+    "sha256": "1db17a8d051aa136110736752c5e1f8b7ed92b6ea8e803112fbbe2497047c210",
+    "path": "prisma/migrations/migration_lock.toml"
+  },
+  {
+    "sha256": "c423d7cbf93c9a0fedc4a0c62aa34129478148cc9aa2cb3a6aac68f236e47624",
+    "path": "prisma/schema.prisma"
+  },
+  {
+    "sha256": "95ba1d8a5c7c8cf9ea5d35b65745d4b21a9a7bf0c7ba6cd7a314e6ab75b30d47",
+    "path": "tsconfig.json"
+  }
+]

@@ -1,0 +1,1 @@
+const fs=require('node:fs');if(process.env.P29_GUARD!=='wed-snap-admin-browser-lab')throw Error('Guard');fs.mkdirSync('/tmp/p29',{recursive:true});let b='';process.stdin.on('data',c=>{b+=c;if(b.length>16384)throw Error('Bound')});process.stdin.on('end',()=>{JSON.parse(b);fs.writeFileSync('/tmp/p29/coordinates.json',b,{flag:'wx'})});

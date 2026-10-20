@@ -1,0 +1,1 @@
+{"extends":"../../tsconfig.json","compilerOptions":{"noEmit":true},"include":["../../apps/worker/src/**/*.ts","../../apps/api/src/**/*.ts","../../packages/shared/src/**/*.ts","retention.ts"],"exclude":[]}

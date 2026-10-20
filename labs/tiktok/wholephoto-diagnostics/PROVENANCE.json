@@ -1,0 +1,9 @@
+{
+  "predecessor": "labs/tiktok/wholephoto-source",
+  "stock": "apps/egress/src/egress.py",
+  "photoUnmodified": "labs/tiktok/photo",
+  "vendorUnmodified": "labs/tiktok/connect-poc/vendor",
+  "sourceChanges": "V2 Budget-versus-send accounting, immutable TCP indices and missing-terminal coverage; no old code/transport/scheduling changes",
+  "sourceBudget": "Already consumed in predecessor; current task is offline-only and source runner explicitly blocked",
+  "dependenciesInstalled": 0
+}

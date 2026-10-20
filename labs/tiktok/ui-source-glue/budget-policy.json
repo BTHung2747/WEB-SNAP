@@ -1,0 +1,1 @@
+{"analyzeMetadataGET":2,"prepareMetadataGET":2,"imageGET":1,"redirect":0,"retry":0,"metadataSeconds":30,"prepareSeconds":180,"metadataResponseMiB":8,"metadataTotalMiB":16,"inputMiB":36,"outputMiB":16,"connectSeconds":10,"readSeconds":20,"dnsRaw":256,"dnsUnique":64,"totalSeconds":480,"cleanupSeconds":20,"sealSeconds":1,"runtimeMiB":928}

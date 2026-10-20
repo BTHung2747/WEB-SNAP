@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "set-cookie-parser": "2.7.2",
+    "@imput/psl": "2.0.4",
+    "url-pattern": "1.0.3",
+    "punycode": "2.3.1",
+    "undici": "6.24.1"
+  },
+  "type": "module",
+  "name": "wed-snap-cobalt-lab",
+  "license": "AGPL-3.0"
+}

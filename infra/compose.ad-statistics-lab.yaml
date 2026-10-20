@@ -1,0 +1,92 @@
+name: wed-snap-ad-statistics-lab
+services:
+  api:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, -e, 'setInterval(() => {}, 60000)']
+    user: node
+    read_only: true
+    environment:
+      P30_GUARD: wed-snap-ad-statistics-lab
+      P30_SOURCE_SHA: ${WED_AD_STATISTICS_SHA:?Use scripts/test-ad-statistics.ps1}
+      DATABASE_URL: postgresql://p30@db:5432/wed_snap_ad_statistics_test
+      REDIS_URL: redis://redis:6379/13
+      APP_ORIGIN: http://p30.localhost:5181
+      MEDIA_ROOT: /tmp/p30-no-media
+      VERIFIED_PLATFORMS: youtube
+      TRUSTED_PROXY_HOSTS: ''
+      COOKIE_SECURE: 'false'
+      ADMIN_SESSION_SECRET: p30-unused-sentinel-replaced-in-memory
+      NODE_OPTIONS: --max-old-space-size=384
+    volumes:
+      - ./apps/api:/app/apps/api:ro
+      - ./apps/web:/app/apps/web:ro
+      - ./packages/shared:/app/packages/shared:ro
+      - ./prisma:/app/prisma:ro
+      - ./tests/p30:/app/tests/p30:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./docs/openapi.json:/app/docs/openapi.json:ro
+    tmpfs: ['/tmp:size=32m,uid=1000,gid=1000,nosuid','/app/node_modules/.prisma:size=64m,uid=1000,gid=1000,nosuid,exec']
+    networks: [lab]
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s
+  web:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node_modules/.bin/vite, --config, tests/p30/vite.config.ts, --configLoader, runner]
+    user: node
+    read_only: true
+    environment:
+      P30_GUARD: wed-snap-ad-statistics-lab
+      P30_SOURCE_SHA: ${WED_AD_STATISTICS_SHA:?Use scripts/test-ad-statistics.ps1}
+      NODE_OPTIONS: --max-old-space-size=256
+    volumes:
+      - ./apps/web:/app/apps/web:ro
+      - ./tests/p30:/app/tests/p30:ro
+    tmpfs: ['/tmp:size=32m,noexec,nosuid']
+    ports: ['127.0.0.1:5181:5181']
+    networks: [lab, frontend]
+    mem_limit: 384m
+    cpus: 0.5
+    pids_limit: 64
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 5s
+  db:
+    image: postgres:16.10-bookworm
+    pull_policy: never
+    read_only: true
+    environment:
+      POSTGRES_DB: wed_snap_ad_statistics_test
+      POSTGRES_USER: p30
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes: [statistics_db:/var/lib/postgresql/data]
+    tmpfs: ['/tmp:size=16m,nosuid','/var/run/postgresql:size=8m,nosuid']
+    networks: [lab]
+    mem_limit: 192m
+    cpus: 0.5
+    pids_limit: 64
+  redis:
+    image: redis:7.4.6-bookworm
+    pull_policy: never
+    read_only: true
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [statistics_redis:/data]
+    tmpfs: ['/tmp:size=8m,nosuid']
+    networks: [lab]
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+networks:
+  lab:
+    internal: true
+  frontend:
+    internal: false
+volumes:
+  statistics_db:
+  statistics_redis:
+

@@ -1,0 +1,16 @@
+# P37.2 proposed lockfile for wed-snap-media-curlcffi-lab image
+# Generated from official PyPI metadata on 2026-10-05
+# Target platform: Linux x86_64, Python 3.11.2, glibc 2.36 (Debian Bookworm)
+# Source: https://pypi.org/pypi/<package>/<version>/json
+
+curl-cffi==0.16.0 \
+    --hash=sha256:182416f07d71a342240554fa62c22e591999b78c225b21d3fe27d9f807420dd6 \
+    --hash=sha256:b00b423da8028eb6221e3b63bcd63d681150c07cee8b16000d1f7ea292731895
+
+cffi==2.1.1 \
+    --hash=sha256:34e261f78cb6ceaaa36f42f2613f4380d94d9c759a9c73c769ee6e0247364632 \
+    --hash=sha256:dd31f52ea1086513bb9df30f8fcee9b8918323ae067a3d5b78bc826a000712be
+
+pycparser==3.0 \
+    --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992 \
+    --hash=sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29

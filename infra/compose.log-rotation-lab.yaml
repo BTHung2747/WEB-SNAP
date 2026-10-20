@@ -1,0 +1,24 @@
+name: wed-snap-log-rotation-lab
+services:
+  probe:
+    image: wed-snap-p3-test:local
+    pull_policy: never
+    command: [node, /probe/probe.cjs]
+    user: node
+    working_dir: /tmp
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: 'no'
+    mem_limit: 96m
+    cpus: 0.25
+    pids_limit: 32
+    tmpfs: ['/tmp:size=8m,uid=1000,gid=1000,nosuid,noexec']
+    volumes:
+      - ./tests/p33/probe.cjs:/probe/probe.cjs:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: '64k'
+        max-file: '3'
