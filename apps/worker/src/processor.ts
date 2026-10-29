@@ -16,6 +16,7 @@ import { runAdapter } from './adapter';
 import { ProcessGroupUnconfirmed } from './process-group';
 import { diskAvailable } from './lifecycle';
 import { photoPostId, photoLimits, requirePhotoEnabled, checkedPhotoMetadata, checkedPhotoFile, selectedPhoto } from '../../../packages/shared/src/tiktok-photo';
+import { videoPostId, videoLimits, requireVideoEnabled } from '../../../packages/shared/src/tiktok-video';
 export async function processJob(queued: any) {
   const id = queued.data.id;
   const phase = queued.name;
@@ -41,6 +42,15 @@ export async function processJob(queued: any) {
       return null;
     }
     const photo = !!(current.sourceUrl && photoPostId(current.sourceUrl));
+    try {
+      if (current.sourceUrl && videoPostId(current.sourceUrl)) {
+        requireVideoEnabled(l.enabledPlatforms); l = videoLimits(l);
+      }
+    } catch (error) {
+      await tx.downloadJob.update({ where: { id }, data: { state: 'failed',
+        errorCode: error instanceof AppError ? error.code : 'UNSUPPORTED_PLATFORM', sourceUrl: null } });
+      return null;
+    }
     if (photo) {
       try { requirePhotoEnabled(l.enabledPlatforms); }
       catch { await tx.downloadJob.update({ where: { id }, data: { state: 'failed', errorCode: 'UNSUPPORTED_PLATFORM', sourceUrl: null } }); return null; }

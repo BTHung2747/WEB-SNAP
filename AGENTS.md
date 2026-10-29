@@ -41,6 +41,15 @@ Cài skill chỉ chuẩn bị cho các phiên thiết kế sau; không tự kh�
 
 ## Tài nguyên và bằng chứng
 
+### Chỉ kiểm thử những gì cần thiết — chỉ thị chủ ngày 24/10/2026
+
+- Mỗi lượt kiểm phải trả lời một câu hỏi cụ thể về phần mã vừa đổi, lỗi đã quan sát hoặc cổng nghiệm thu của luồng người dùng đang làm. Chọn lệnh/nhóm kiểm nhỏ nhất đủ trả lời; không tăng số test để tạo tiến độ.
+- Tái dùng kết quả đã đạt khi component không đổi và không có bằng chứng lỗi mới. Không chạy lại startup profile, UI fixture, bộ tải hay kiểm môi trường đã khép chỉ để xác nhận thêm.
+- Ưu tiên test sẵn có sát thay đổi. Chỉ chạy toàn suite khi thay đổi ảnh hưởng rộng, kiểm tra bắt buộc yêu cầu, hoặc có bằng chứng hồi quy. Sửa tài liệu và thay đổi nhỏ có thể kiểm trực tiếp thì không thêm test tự động.
+- Khi các kiểm tra cần thiết đã đạt, chuyển sang tích hợp/nghiệm thu luồng thực. Reviewer đọc diff và kết quả trước; chỉ chạy thêm nếu có khoảng trống cụ thể hoặc cần tái hiện finding mới, không lặp bộ kiểm của bên code mặc định.
+- Không dựng thêm framework, observer, lab hoặc vòng PLAN/review/test nếu bằng chứng hiện có đã đủ chọn bản sửa. Dùng log/công cụ có sẵn; chỉ bổ sung phép đo tối thiểu khi thật sự thiếu thông tin để sửa lỗi đang chặn.
+- Bàn giao gọn: phần đã đổi, lệnh thực chạy và kết quả, giới hạn chưa kiểm, bước tiếp theo. Không sao chép/hash lại toàn bộ lịch sử hoặc tạo nhiều báo cáo cùng kết luận. Giữ nguyên bằng chứng cũ và các kiểm tra bắt buộc về quyền nguồn, an toàn dữ liệu, vòng đời, pins và cleanup trong đúng phạm vi thực thi.
+
 Máy có RAM 8 GB: chạy các kiểm tra cần thiết tuần tự, tránh build/test nặng hoặc nhiều dịch vụ cùng lúc. Dùng lab riêng khi nhiệm vụ yêu cầu kiểm thử; không tự thao tác dữ liệu, settings hoặc stack chính ngoài phạm vi được giao.
 
 Phân biệt lệnh thực sự chạy trong phiên với đọc mã nguồn và đọc log lịch sử. Ghi rõ giả lập, môi trường, giới hạn và phần chưa kiểm chứng; cập nhật tiến độ sau triển khai theo yêu cầu của nhiệm vụ.

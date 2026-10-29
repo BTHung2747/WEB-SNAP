@@ -1,0 +1,12 @@
+# APP_IMAGE must be the already built/reviewed app release (prefer an OCI digest).
+ARG APP_IMAGE
+ARG CADDY_IMAGE=caddy:2.11.7-alpine
+FROM ${APP_IMAGE} AS assets
+# CI supplies the resolved official digest; manual builds keep the version pin.
+FROM ${CADDY_IMAGE}
+COPY --from=assets /app/apps/web/dist/ /srv/
+COPY infra/production/Caddyfile /etc/caddy/Caddyfile
+RUN chown -R 1000:1000 /data /config
+USER 1000:1000
+EXPOSE 8080 8443
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

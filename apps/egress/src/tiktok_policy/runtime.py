@@ -1,5 +1,5 @@
 """Request-scoped WED SNAP admission/ownership glue. No HTTP/TLS implementation."""
-import asyncio,collections,contextlib,hashlib,json,os,pathlib,socket,threading,time,uuid
+import asyncio,collections,contextlib,errno,hashlib,json,os,pathlib,socket,threading,time,uuid
 from .candidate import Sockets,connect
 from .dns_ipc import resolve
 from .dns_diagnostic import validate_receipt
@@ -9,6 +9,17 @@ from .batch_validation import validate
 DOMAINS=('tiktok.com','tiktokcdn.com','tiktokv.com','byteoversea.com','ibytedtos.com')
 SETUPS=threading.BoundedSemaphore(1)
 def enabled(host):return os.environ.get('TIKTOK_EGRESS_POLICY_ENABLED')=='1' and any(host==d or host.endswith('.'+d) for d in DOMAINS)
+
+def _tcp_failure_code(error):
+    # Public exception/errno only: never stringify a socket exception/address.
+    if isinstance(error,asyncio.CancelledError):return 'CANCELLED'
+    if isinstance(error,TimeoutError):return 'TIMEOUT'
+    if isinstance(error,OSError):
+        return {errno.ENETUNREACH:'OS_ENETUNREACH',errno.EHOSTUNREACH:'OS_EHOSTUNREACH',
+          errno.ECONNREFUSED:'OS_ECONNREFUSED',errno.ETIMEDOUT:'OS_ETIMEDOUT',
+          errno.EACCES:'OS_EACCES',errno.ECONNRESET:'OS_ECONNRESET',
+          errno.EADDRNOTAVAIL:'OS_EADDRNOTAVAIL'}.get(error.errno,'OS_OTHER')
+    return 'OTHER_ERROR'
 
 class ObservedLoop(asyncio.SelectorEventLoop):
     def __init__(self,ctx):
@@ -21,8 +32,8 @@ class ObservedLoop(asyncio.SelectorEventLoop):
         try:
             result=await super().sock_connect(sock,address)
             ctx.trace.observe(ctx.cid,'TCP_CONNECT','END',time.monotonic()-start,index=index,groupIndex=group);return result
-        except BaseException:
-            ctx.trace.observe(ctx.cid,'TCP_CONNECT','ERROR',time.monotonic()-start,code='ERROR',index=index,groupIndex=group);raise
+        except BaseException as exc:
+            ctx.trace.observe(ctx.cid,'TCP_CONNECT','ERROR',time.monotonic()-start,code=_tcp_failure_code(exc),index=index,groupIndex=group);raise
 
 def verify_vendor():
     import aiohappyeyeballs

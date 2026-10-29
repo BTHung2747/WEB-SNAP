@@ -98,8 +98,8 @@ class BoundedBody(io.RawIOBase):
         super().close()
 
 class GuardedYDL(yt_dlp.YoutubeDL):
-    def __init__(self,budget,folder,session_factory=None):
-        self.budget=budget;self.allowed_url=None;self.session=None
+    def __init__(self,budget,folder,session_factory=None,*,phase_transport=False):
+        self.budget=budget;self.allowed_url=None;self.session=None;self.source_failed=False
         opts={'quiet':True,'no_warnings':True,'logger':Silent(),'noplaylist':True,'cachedir':False,
               'cookiefile':None,'cookiesfrombrowser':None,'usenetrc':False,'proxy':PROXY,
               'socket_timeout':10,'retries':0,'fragment_retries':0,'extractor_retries':0,
@@ -110,10 +110,24 @@ class GuardedYDL(yt_dlp.YoutubeDL):
               'external_downloader':{'default':'native'}}
         super().__init__(opts)
         self.boundary_observer=BoundaryObserver(root=folder)
-        self.session=(session_factory or requests.Session)()
-        self.session.trust_env=False;self.session.cookies=self.cookiejar
-        if session_factory is None:self.session.mount('https://',ObservedAdapter(max_retries=0))
+        base=(session_factory or requests.Session)()
+        try:
+            base.trust_env=False;base.cookies=self.cookiejar
+            if session_factory is None:
+                from .photo_proxy import PhotoProxyAdapter
+                base.mount('https://',(PhotoProxyAdapter if phase_transport else ObservedAdapter)(max_retries=0))
+            if phase_transport:
+                from .session_owner import SessionOwner
+                self.session=SessionOwner(base)
+            else:self.session=base
+        except BaseException:
+            base.close();self.cookiejar.clear();raise
     def urlopen(self,request):
+        if self.budget.mode=='metadata':self.budget.latest_body=None
+        try:return self._bounded_urlopen(request)
+        except BaseException:
+            self.source_failed=True;raise
+    def _bounded_urlopen(self,request):
         if isinstance(request,str):request=Request(request)
         self.budget.check();u=https(request.url)
         if request.url!=self.allowed_url or request.method!='GET' or request.data is not None:self.budget.fail('REQUEST_POLICY')
@@ -152,8 +166,9 @@ class GuardedYDL(yt_dlp.YoutubeDL):
     def close(self):
         try:
             if self.session is not None:self.session.close()
-            self.cookiejar.clear()
-        finally:super().close()
+        finally:
+            self.cookiejar.clear();self.budget.latest_body=None
+            super().close()
 
 def allowed_formats(info,expected_id,output_cap):
     if not isinstance(info,dict) or str(info.get('id'))!=expected_id or info.get('_type','video')!='video':raise RuntimeError('CONTENT_POLICY')

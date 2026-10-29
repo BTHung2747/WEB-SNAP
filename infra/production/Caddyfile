@@ -1,0 +1,60 @@
+{
+    admin off
+    persist_config off
+    email {$ACME_EMAIL}
+    http_port 8080
+    https_port 8443
+    grace_period 1860s
+    servers {
+        protocols h1 h2
+    }
+    # Download tickets occur in URI paths; never emit access/request error objects.
+    log default {
+        output stdout
+        format json
+        exclude http.log.access http.log.error
+    }
+}
+
+{$PUBLIC_HOST} {
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Strict-Transport-Security "max-age=31536000"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    }
+    @api path /api /api/*
+    handle @api {
+        request_body {
+            max_size 64KB
+        }
+        reverse_proxy api:3000 {
+            # Exact peer identity; no user-supplied multi-hop forwarding chain.
+            header_up -Forwarded
+            header_up -X-Real-IP
+            header_up X-Forwarded-For {http.request.remote.host}
+            header_up X-Forwarded-Host {http.request.host}
+            header_up X-Forwarded-Proto https
+            # Positive flushing retains cancellation on client disconnect.
+            # Do NOT use -1 (Caddy's low-latency mode suppresses that cancellation).
+            flush_interval 100ms
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 10s
+                compression off
+            }
+        }
+    }
+    handle {
+        root * /srv
+        encode zstd gzip
+        try_files {path} /index.html
+        file_server
+    }
+}
+
+# Readiness inside this container only; not published by Compose.
+http://127.0.0.1:8090 {
+    respond /healthz 200
+}

@@ -1,0 +1,218 @@
+# Standalone production project. Never merge with compose.yaml/local overrides.
+name: wed-snap-production
+x-logging: &logging
+  driver: json-file
+  options: {max-size: '10m', max-file: '3'}
+x-env: &runtime
+  NODE_ENV: production
+  NODE_OPTIONS: --max-old-space-size=256
+  DATABASE_URL: postgresql://wed_snap:${POSTGRES_PASSWORD:?Set a new production hex password}@postgres:5432/wed_snap
+  REDIS_URL: redis://redis:6379
+  ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?Set a new production secret}
+  APP_ORIGIN: https://${PUBLIC_HOST:?Set the target DNS hostname}
+  COOKIE_SECURE: 'true'
+  CONTACT_EMAIL: ${CONTACT_EMAIL:?Set the real operator contact}
+  PRODUCT_NAME: ${PRODUCT_NAME:-WED SNAP}
+  VERIFIED_PLATFORMS: youtube,tiktok
+  MEDIA_ROOT: /media
+  MEDIA_PROXY: http://egress:8888
+  MAX_DURATION_SECONDS: '600'
+  MAX_BYTES: '209715200'
+  MAX_INPUT_BYTES: '262144000'
+  ANALYZE_TIMEOUT_SECONDS: '30'
+  PREPARE_TIMEOUT_SECONDS: '180'
+  SESSION_TTL_SECONDS: '120'
+  RELEASE_GRACE_SECONDS: '30'
+  READY_TTL_SECONDS: '600'
+  SWEEP_SECONDS: '30'
+  LEASE_TTL_SECONDS: '90'
+  RETRY_GRACE_SECONDS: '120'
+  TRANSFER_MAX_SECONDS: '1800'
+  MONTHLY_EGRESS_BYTES: ${MONTHLY_EGRESS_BYTES:-10737418240}
+  DISK_STOP_PERCENT: '80'
+  QUEUE_LIMIT: '20'
+  TIKTOK_ADAPTER_ENABLED: ${TIKTOK_ADAPTER_ENABLED:-0}
+  TIKTOK_PHOTO_ENABLED: ${TIKTOK_PHOTO_ENABLED:-0}
+  TIKTOK_VIDEO_ENABLED: ${TIKTOK_VIDEO_ENABLED:-0}
+  TIKTOK_EGRESS_POLICY_ENABLED: ${TIKTOK_EGRESS_POLICY_ENABLED:-0}
+  TIKTOK_EGRESS_CONTROL_SECRET: ${TIKTOK_EGRESS_CONTROL_SECRET:?Set a new 64 lowercase hex control secret}
+x-app: &app
+  image: ${APP_IMAGE:?Set the reviewed immutable application image}
+  platform: linux/amd64
+  pull_policy: never
+  user: '1000:1000'
+  read_only: true
+  ipc: private
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ['/tmp:size=128m,uid=1000,gid=1000,nosuid,nodev']
+  environment: *runtime
+  networks: [private]
+  logging: *logging
+  restart: unless-stopped
+services:
+  postgres:
+    image: postgres:16.10-bookworm
+    platform: linux/amd64
+    pull_policy: never
+    user: '999:999'
+    environment:
+      POSTGRES_DB: wed_snap
+      POSTGRES_USER: wed_snap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a new production hex password}
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=30]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    tmpfs: ['/var/run/postgresql:uid=999,gid=999,size=8m,nosuid,nodev', '/tmp:uid=999,gid=999,size=16m,nosuid,nodev']
+    read_only: true
+    ipc: private
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [private]
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    pids_limit: 80
+    logging: *logging
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, pg_isready, -U, wed_snap, -d, wed_snap]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4.6-bookworm
+    platform: linux/amd64
+    pull_policy: never
+    user: '999:999'
+    command: [redis-server, --appendonly, 'yes', --maxmemory, 64mb, --maxmemory-policy, noeviction]
+    volumes: [redis_data:/data]
+    read_only: true
+    ipc: private
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [private]
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.25
+    pids_limit: 40
+    logging: *logging
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  egress:
+    image: ${EGRESS_IMAGE:?Set the reviewed immutable egress image}
+    platform: linux/amd64
+    pull_policy: never
+    user: '65534:65534'
+    environment:
+      PYTHONDONTWRITEBYTECODE: '1'
+      TIKTOK_EGRESS_POLICY_ENABLED: ${TIKTOK_EGRESS_POLICY_ENABLED:-0}
+      TIKTOK_EGRESS_CONTROL_SECRET: ${TIKTOK_EGRESS_CONTROL_SECRET:?Set a new 64 lowercase hex control secret}
+      TIKTOK_EGRESS_CONTROL_NETWORKS: ${PRODUCTION_PRIVATE_SUBNET:?Choose a nonoverlapping private production CIDR}
+      EGRESS_DOMAINS: youtube.com,youtu.be,googlevideo.com,ytimg.com,googleapis.com,tiktok.com,tiktokcdn.com,tiktokv.com,byteoversea.com,ibytedtos.com
+    networks: [private, outbound]
+    read_only: true
+    ipc: private
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 80
+    logging: *logging
+    restart: unless-stopped
+  api:
+    <<: *app
+    command: [node, dist/apps/api/src/main.js]
+    environment:
+      <<: *runtime
+      TRUSTED_PROXY_HOSTS: proxy
+    networks: [private, proxy_api]
+    volumes: [media_data:/media:ro]
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.75
+    pids_limit: 80
+    # Native transfer leases can live up to1800s. Drain before update/stop.
+    stop_grace_period: 1860s
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:3000/api/v1/health',{signal:AbortSignal.timeout(3000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  worker:
+    <<: *app
+    command: [node, dist/apps/worker/src/main.js]
+    volumes: [media_data:/media]
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1
+    pids_limit: 80
+    stop_grace_period: 190s
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      egress: {condition: service_started}
+  proxy:
+    image: ${WEB_IMAGE:?Set the static Caddy image built from the same app release}
+    platform: linux/amd64
+    pull_policy: never
+    user: '1000:1000'
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set the target DNS hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?Set the certificate contact}
+    ports: ['80:8080/tcp', '443:8443/tcp']
+    networks: [proxy_api, frontend]
+    volumes: [caddy_data:/data, caddy_config:/config]
+    read_only: true
+    ipc: private
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ['/tmp:size=16m,uid=1000,gid=1000,nosuid,nodev']
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    pids_limit: 80
+    stop_grace_period: 1860s
+    logging: *logging
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, 'http://127.0.0.1:8090/healthz']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  maintenance:
+    <<: *app
+    profiles: [tools]
+    command: [node, node_modules/prisma/build/index.js, migrate, deploy]
+    restart: 'no'
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.75
+    pids_limit: 80
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+networks:
+  private:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${PRODUCTION_PRIVATE_SUBNET:?Choose a nonoverlapping private production CIDR}
+  proxy_api: {internal: true}
+  outbound: {}
+  frontend: {}
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  media_data: {}
+  caddy_data: {}
+  caddy_config: {}

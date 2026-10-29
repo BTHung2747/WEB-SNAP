@@ -1,0 +1,201 @@
+name: Build and publish reviewed release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reviewed-ghcr-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'BTHung2747/WEB-SNAP' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind release to source and this run
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          test "$(uname -m)" = x86_64
+          docker version
+          docker buildx version
+          command -v jq
+          release_dir="$RUNNER_TEMP/ws-release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -m 700 "$release_dir" "$release_dir/docker"
+          {
+            echo "RELEASE_DIR=$release_dir"
+            echo "DOCKER_CONFIG=$release_dir/docker"
+            echo "CONTAINER_PREFIX=ws-release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            echo "IMAGE_ROOT=ghcr.io/${GITHUB_REPOSITORY,,}"
+            echo "RELEASE_TAG=sha-$GITHUB_SHA-run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          } >> "$GITHUB_ENV"
+
+      # No registry login/push until every build and artifact check below passes.
+      - name: Build app
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 --provenance=false -f Dockerfile \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE_ROOT-app:$RELEASE_TAG" .
+
+      - name: Build static web from the same app image
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 caddy:2.11.7-alpine
+          docker image inspect caddy:2.11.7-alpine --format '{{json .RepoDigests}}' \
+            | jq -er 'map(select(test("@sha256:[0-9a-f]{64}$")))[0]' \
+            > "$RELEASE_DIR/caddy-base.txt"
+          docker build --platform linux/amd64 --provenance=false -f infra/production/Dockerfile.web \
+            --build-arg "APP_IMAGE=$IMAGE_ROOT-app:$RELEASE_TAG" \
+            --build-arg "CADDY_IMAGE=$(cat "$RELEASE_DIR/caddy-base.txt")" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE_ROOT-web:$RELEASE_TAG" .
+
+      - name: Build egress
+        run: |
+          set -euo pipefail
+          docker build --platform linux/amd64 --provenance=false -f apps/egress/Dockerfile \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            -t "$IMAGE_ROOT-egress:$RELEASE_TAG" .
+
+      - name: Check compiled artifacts and static identity without network
+        run: |
+          set -euo pipefail
+          for role in app web egress; do
+            ref="$IMAGE_ROOT-$role:$RELEASE_TAG"
+            test "$(docker image inspect "$ref" --format '{{.Os}}/{{.Architecture}}')" = linux/amd64
+            test "$(docker image inspect "$ref" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+          done
+          guard=(--rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --ipc private --pids-limit 64 --cpus 1 --memory 512m --memory-swap 512m)
+          timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-app" --user 1000:1000 --entrypoint /bin/sh \
+            "$IMAGE_ROOT-app:$RELEASE_TAG" -ec '
+              for f in dist/apps/api/src/main.js dist/apps/worker/src/main.js dist/scripts/create-admin.js; do
+                test -s "$f"; node --check "$f"
+              done
+              test -s /app/infra/media_adapter.py
+              test -s /app/apps/media/src/tiktok/LICENSE
+              test -s /app/apps/media/src/tiktok/NOTICE.md
+              test -s /app/apps/web/dist/index.html
+              test -d /app/apps/web/dist/assets
+              cd /app/apps/web/dist
+              find . -type f -exec sha256sum {} \; | LC_ALL=C sort
+            ' > "$RELEASE_DIR/app-static.txt"
+          timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-web" --user 1000:1000 --entrypoint /bin/sh \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" -ec '
+              test -s /srv/index.html; test -d /srv/assets
+              cd /srv; find . -type f -exec sha256sum {} \; | LC_ALL=C sort
+            ' > "$RELEASE_DIR/web-static.txt"
+          diff -u "$RELEASE_DIR/app-static.txt" "$RELEASE_DIR/web-static.txt"
+          timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-egress" --user 65534:65534 --entrypoint python \
+            "$IMAGE_ROOT-egress:$RELEASE_TAG" -c '
+          from pathlib import Path
+          for name in ("egress.py", "LICENSE", "NOTICE.md", "PROVENANCE.json"):
+              assert Path(name).is_file(), name
+          for root in (Path("egress.py"), Path("tiktok_policy"), Path("vendor")):
+              files = [root] if root.is_file() else list(root.rglob("*.py"))
+              assert files, str(root)
+              for path in files:
+                  compile(path.read_bytes(), str(path), "exec")
+          print("EGRESS_SYNTAX_PASS")'
+
+      - name: Validate with the pinned Caddy binary without network
+        run: |
+          set -euo pipefail
+          guard=(--rm --network none --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --ipc private --pids-limit 64 --cpus 1 --memory 128m --memory-swap 128m --tmpfs /data:rw,noexec,nosuid,size=16m,uid=1000,gid=1000 --tmpfs /config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000 --env PUBLIC_HOST=release.example.invalid --env ACME_EMAIL=ci@example.invalid)
+          timeout --signal=TERM --kill-after=5s 30s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-caddy-version" --entrypoint caddy \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" version | tee "$RELEASE_DIR/caddy-version.txt"
+          grep -Eq '^v2\.11\.7([[:space:]]|$)' "$RELEASE_DIR/caddy-version.txt"
+          timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-caddy-adapt" --entrypoint caddy \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" adapt --config /etc/caddy/Caddyfile --adapter caddyfile \
+            > "$RELEASE_DIR/caddy-adapted.json"
+          timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
+            --name "$CONTAINER_PREFIX-caddy-validate" --entrypoint caddy \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: Publish exactly three checked images and record registry digests
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          unset GHCR_TOKEN
+          : > "$RELEASE_DIR/images.tsv"
+          for role in app web egress; do
+            name="$IMAGE_ROOT-$role"
+            ref="$name:$RELEASE_TAG"
+            docker push "$ref"
+            digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -er '.digest')
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            # Confirm that the published single-platform manifest points to the checked image.
+            remote_id=$(docker buildx imagetools inspect "$name@$digest" --raw | jq -er '.config.digest')
+            local_id=$(docker image inspect "$ref" --format '{{.Id}}')
+            test "$remote_id" = "$local_id"
+            printf '%s\t%s\t%s\n' "$role" "$name@$digest" "$local_id" >> "$RELEASE_DIR/images.tsv"
+          done
+          test "$(wc -l < "$RELEASE_DIR/images.tsv")" -eq 3
+          {
+            echo '## Checked release published (not deployed)'
+            echo "Source commit: $GITHUB_SHA"
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Tag: $RELEASE_TAG"
+            echo "Caddy base: $(cat "$RELEASE_DIR/caddy-base.txt")"
+            echo "Caddy binary: $(cat "$RELEASE_DIR/caddy-version.txt")"
+            echo
+            echo '| Role | Immutable registry reference | Local image ID |'
+            echo '| --- | --- | --- |'
+            while IFS=$'\t' read -r role ref id; do
+              printf '| %s | `%s` | `%s` |\n' "$role" "$ref" "$id"
+            done < "$RELEASE_DIR/images.tsv"
+            echo
+            echo 'Artifact/static/Caddy checks passed. Startup, TLS, migrations, source and P5/P6 NOT_RUN.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean only this run containers and registry credentials
+        if: always()
+        run: |
+          set -euo pipefail
+          cleanup_status=0
+          if [[ -n "${CONTAINER_PREFIX:-}" ]]; then
+            for role in app web egress caddy-version caddy-adapt caddy-validate; do
+              name="$CONTAINER_PREFIX-$role"
+              if ids=$(docker container ls -aq --filter "name=^/$name$"); then
+                if [[ -n "$ids" ]]; then
+                  docker rm -f "$name" || cleanup_status=1
+                fi
+              else
+                cleanup_status=1
+              fi
+            done
+          fi
+          if [[ -n "${RELEASE_DIR:-}" ]]; then
+            test "$RELEASE_DIR" = "$RUNNER_TEMP/ws-release-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            docker logout ghcr.io || cleanup_status=1
+            rm -rf -- "$RELEASE_DIR"
+          fi
+          exit "$cleanup_status"

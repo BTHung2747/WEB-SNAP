@@ -7,6 +7,7 @@ import { ProcessGroup, ProcessGroupUnconfirmed } from './process-group';
 import { photoPostId, photoLimits, requirePhotoEnabled } from '../../../packages/shared/src/tiktok-photo';
 import { performance } from 'node:perf_hooks';
 import { ProxyPhase, ProxyProofError } from './proxy-phase';
+import { videoPostId, videoLimits, requireVideoEnabled } from '../../../packages/shared/src/tiktok-video';
 export async function runAdapter(
   id: string,
   phase: string,
@@ -16,10 +17,12 @@ export async function runAdapter(
   token: string,
 ): Promise<any> {
   const photo = !!photoPostId(url);
+  const video = !!videoPostId(url);
   if (photo) { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
+  if (video) { requireVideoEnabled(l.enabledPlatforms); l = videoLimits(l); }
   const absoluteEnd = performance.now() + (phase === 'analyze' ? l.analyzeTimeout : l.prepareTimeout) * 1000;
   let proxyPhase: ProxyPhase | undefined;
-  try { proxyPhase = photo ? await ProxyPhase.open(phase, id, token, absoluteEnd) : undefined; }
+  try { proxyPhase = photo || video ? await ProxyPhase.open(phase, id, token, absoluteEnd) : undefined; }
   catch (error) {
     console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: false, code: error instanceof ProxyProofError ? error.reason : 'CHANNEL' }));
     throw error instanceof AppError ? error : new AppError('CONTENT_UNAVAILABLE');

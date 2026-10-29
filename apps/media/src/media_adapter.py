@@ -11,6 +11,8 @@ if len(sys.argv)>=4:
         if '/photo/' in urlsplit(sys.argv[2]).path:
             from tiktok.photo_adapter import main as tiktok_main
         else:
+            if os.environ.get('TIKTOK_VIDEO_ENABLED')!='1':
+                print(json.dumps({'error':'UNSUPPORTED_PLATFORM'}));sys.exit(1)
             from tiktok.adapter import main as tiktok_main
         sys.exit(tiktok_main(sys.argv[1:]))
 import yt_dlp

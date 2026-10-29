@@ -23,17 +23,20 @@ import { admission, csrf, inputSchema, own, parse, prepareSchema } from '../comm
 import { clientIp } from '../security/client-ip';
 import { ratePolicy } from '../security/rate-policy';
 import { photoPostId, requirePhotoEnabled, selectedPhoto, checkedPhotoFormats } from '../../../../packages/shared/src/tiktok-photo';
+import { videoPostId, requireVideoEnabled } from '../../../../packages/shared/src/tiktok-video';
 @Injectable()
 export class JobsService {
   async analyze(req: Request, body: any, res: Response) {
     const s = await csrf(req);
     const { url: raw } = parse(inputSchema, body);
-    const photoId = photoPostId(raw);
     const { validateUrl } = await import('../../../../packages/shared/src/core');
     const { url, platform } = validateUrl(raw);
+    const photoId = photoPostId(url);
+    const videoId = videoPostId(url);
     const l = await limits();
     if (!l.enabledPlatforms.includes(platform as any)) fail('UNSUPPORTED_PLATFORM');
     if (photoId) requirePhotoEnabled(l.enabledPlatforms);
+    if (videoId) requireVideoEnabled(l.enabledPlatforms);
     await rate(
       `analyze:s:${s.id}`,
       ratePolicy.analyzeSession.max,
@@ -117,6 +120,8 @@ export class JobsService {
       if (await expireSelectableMetadata(tx, j)) return null;
       if (expiredMetadataJob(j)) fail('JOB_EXPIRED', 410);
       if (j.cancelRequested || ownerExpired(j)) fail('JOB_EXPIRED', 410);
+      if (j.platform === 'tiktok' && (j.items.some(i => i.kind === 'video') ||
+          (j.sourceUrl && videoPostId(j.sourceUrl)))) requireVideoEnabled(l.enabledPlatforms);
       if (j.items.some(i => i.kind === 'photo') || (j.sourceUrl && photoPostId(j.sourceUrl))) {
         requirePhotoEnabled(l.enabledPlatforms);
         selectedPhoto(j.items, selected.formatId, j.sourceUrl ? photoPostId(j.sourceUrl) || undefined : undefined);

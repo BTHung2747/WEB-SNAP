@@ -57,12 +57,14 @@ def execute(phase,url,folder,selected=None,session_factory=None):
     total_seconds=analyze_seconds if phase=='analyze' else bound('ADAPTER_PREPARE_TIMEOUT',180,180)
     deadline=time.monotonic()+total_seconds
     budget=Budget(max_input,max_output,deadline,analyze_seconds)
-    ydl=GuardedYDL(budget,folder,session_factory)
+    ydl=GuardedYDL(budget,folder,session_factory,phase_transport=True)
     names=[folder/name for name in ('media.mp4','media.mp4.part','media.mp4.ytdl')]
     existing={p for p in names if p.exists()}
     try:
         ydl.allowed_url=url
         info=ydl.extract_info(url,download=False,ie_key='TikTok',process=False);budget.check()
+        if budget.failure:budget.fail(budget.failure)
+        if ydl.source_failed:raise Rejected('CONTENT_UNAVAILABLE')
         if info.get('_type','video')!='video' or info.get('is_live') or info.get('live_status') in ('is_live','is_upcoming'):
             raise Rejected('UNSUPPORTED_CONTENT')
         if info.get('availability') in ('private','premium_only','subscriber_only','needs_auth') or info.get('age_limit',0)>0:
@@ -82,14 +84,18 @@ def execute(phase,url,folder,selected=None,session_factory=None):
             raise Rejected(checked.get('error') if checked.get('error') in ('AUTH_REQUIRED','UNSUPPORTED_CONTENT','CONTENT_UNAVAILABLE') else 'CONTENT_UNAVAILABLE')
         if checked.get('id')!=expected or abs(duration-checked['duration'])>1:raise Rejected('CONTENT_UNAVAILABLE')
         candidates=allowed_formats(info,expected,min(max_output,max_input))
-        mapping={public_id(info,f):f for f in candidates}
-        if len(mapping)!=len(candidates):raise Rejected('FORMAT_UNAVAILABLE')
+        # yt-dlp emits one row per qualified CDN mirror. One public quality identity
+        # selects its first qualified row, preserving library order without URL persistence.
+        mapping={}
+        for f in candidates:mapping.setdefault(public_id(info,f),f)
         rows=[{'id':fid,'label':str(f.get('height') or '?')+'p · MP4 · có tiếng',
                'size':f.get('filesize'),'height':f.get('height'),'kind':'video'} for fid,f in mapping.items()]
         rows=sorted(rows,key=lambda r:r.get('height') or 0)[:30]
         if phase=='analyze':
             title=re.sub(r'https?://\S+','[url-redacted]',str(info.get('title') or 'Video'))[:300]
-            return {'title':title,'duration':duration,'formats':rows}
+            result={'title':title,'duration':duration,'formats':rows}
+            ydl.close();ydl=None;budget.check()
+            return result
         # Fresh extraction in this new child, independent of analyze cookie/URL/session.
         if selected not in {r['id'] for r in rows}:raise Rejected('FORMAT_UNAVAILABLE')
         if existing:raise Rejected('INVALID_ASSET_PATH')
@@ -113,16 +119,22 @@ def execute(phase,url,folder,selected=None,session_factory=None):
             h=hashlib.sha256()
             with names[0].open('rb') as f:
                 for data in iter(lambda:f.read(1024*1024),b''):h.update(data);budget.check()
-        return {'file':'media.mp4','size':names[0].stat().st_size,'inputBytes':budget.network_total}
+        result={'file':'media.mp4','size':names[0].stat().st_size,'inputBytes':budget.network_total}
+        ydl.close();ydl=None;budget.check()
+        return result
     except Exception as error:
         for path in names:
             if path not in existing and path.is_file() and not path.is_symlink():path.unlink()
         raise Rejected(error_code(error,budget)) from None
-    finally:ydl.close()
+    finally:
+        if ydl is not None:ydl.close()
 
 def main(args):
     try:
         if os.environ.get('TIKTOK_ADAPTER_ENABLED')!='1':raise Rejected('UNSUPPORTED_PLATFORM')
+        if os.environ.get('TIKTOK_VIDEO_ENABLED')!='1':raise Rejected('UNSUPPORTED_PLATFORM')
+        from .photo_proxy import phase_credentials
+        phase_credentials()
         if len(args) not in (3,4):raise Rejected('UNSUPPORTED_CONTENT')
         result=execute(*args)
         print(json.dumps(result,ensure_ascii=False));return 0

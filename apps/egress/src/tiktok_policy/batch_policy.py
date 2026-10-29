@@ -3,6 +3,13 @@ import asyncio,math,time
 PAIR_MIN=1.0;SINGLE_MIN=.6;GROUP_MAX=2.0;REAP=.1;MAX_GROUPS=4
 class BudgetStop(RuntimeError):
     def __init__(self,code):self.code=code;super().__init__(code)
+
+def _group_failure_code(error):
+    if isinstance(error,BudgetStop):return 'GROUP_TIMEOUT' if error.code=='GROUP_TIMEOUT' else 'OTHER_BUDGET'
+    if isinstance(error,asyncio.CancelledError):return 'CANCELLED'
+    if isinstance(error,TimeoutError):return 'TIMEOUT'
+    if isinstance(error,OSError):return 'OS_ERROR'
+    return 'OTHER_ERROR'
 def allocation(remaining,addresses_left,trace_groups):
     minimum=SINGLE_MIN if addresses_left==1 else PAIR_MIN
     if not math.isfinite(remaining) or remaining<minimum:raise BudgetStop('TCP_BUDGET_EXHAUSTED')
@@ -88,7 +95,7 @@ async def connect_groups(addresses,deadline,registry,*,loop,staggered,library):
             finally:
                 registry.epoch_active=False
                 measured_elapsed=time.monotonic()-started
-                if trace:trace.observe(registry.cid,'LIBRARY_SELECT','END' if success else 'ERROR',measured_elapsed,code='OK' if success else 'ERROR',groupIndex=number,live=registry.live(),pending=len(registry.pending),closed=sum(s.fileno()==-1 for s in registry.sockets[before:]),contextOwnerID=ctx_id)
+                if trace:trace.observe(registry.cid,'LIBRARY_SELECT','END' if success else 'ERROR',measured_elapsed,code='OK' if success else _group_failure_code(error),groupIndex=number,live=registry.live(),pending=len(registry.pending),closed=sum(s.fileno()==-1 for s in registry.sockets[before:]),contextOwnerID=ctx_id)
                 registry.records.append({'group':number,'q':q,'active':q-REAP,'elapsed':measured_elapsed,'created':len(registry.sockets)-before,'closed':sum(s.fileno()==-1 for s in registry.sockets[before:]),'live':registry.live(),'pending':len(registry.pending),'success':success})
                 if trace and not registry.pending:trace.release_group(registry.cid,ctx_id)
             if registry.pending or registry.reap_failed or registry.live():raise BudgetStop('LOSER_NOT_CLOSED')
