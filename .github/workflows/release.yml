@@ -105,6 +105,8 @@ jobs:
           timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
             --name "$CONTAINER_PREFIX-web" --user 1000:1000 --entrypoint /bin/sh \
             "$IMAGE_ROOT-web:$RELEASE_TAG" -ec '
+              caddy_caps="$(getcap /usr/bin/caddy)"
+              test -z "$caddy_caps"
               test -s /srv/index.html; test -d /srv/assets
               cd /srv; find . -type f -exec sha256sum {} \; | LC_ALL=C sort
             ' > "$RELEASE_DIR/web-static.txt"
