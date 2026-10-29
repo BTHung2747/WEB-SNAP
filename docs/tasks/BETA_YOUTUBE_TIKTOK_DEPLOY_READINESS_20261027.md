@@ -80,7 +80,23 @@ Chủ giao “bên kia đã xong rồi đấy tiếp đi” sau khi đã thống
 
 **Review bản sửa Caddy30/10:** nhận đúng ba file webrecipe/workflow/runbook của code. Recipe dùng `setcap -r`/bắt buộc getcap rỗng trước USER1000; web artifact-check hiện có kiểm lại getcap rỗng. Root đã đọc diff và đối chiếu primary recipe/Linux EPERM; tái dùng YAMLparse/Bashsyntax2khối/g diffcheckexit0 của code, không chạy lặp. Không đổi runtimeguards/ports/app/egress/deps hoặc parserCaddyfile; chưa gọi nguyên nhân runtime đã chứng minh hoặc CaddyPASS khi CI mới chưa chạy.
 
-Bước kế tiếp: push delta đã review và kiểm release thật trên commit mới; nếu đạt thì lưu conclusion/digests rồi tiếp máy chủ. Không tự rerun suite hoặc nguồn lịch sử, không nâng gói AWS/GitHub, đổi visibility, tạo VM/DNS hoặc deploy từ việc push/build này.
+### Release đã phát hành — 30/10/2026
+
+Bản sửa Caddy đã commit/push thành **`2ec80343a94135b3e169b6164804b93f3707debf`** (5file recipe/workflow/runbook/record, không runtime downloader). Đúng một dispatch trên source mới được nhậnHTTP200, run[40919987376](https://github.com/BTHung2747/WEB-SNAP/actions/runs/40919987376)/attempt1/job123610291375. API actual xác nhận **completed/success** và đúngheadSHA; job hoàn tấtUTC29/10 **17:20:37Z** / VN30/10 **00:20:37**. Mọi step buildapp→web→egress, artifactcompiled/staticidentity/egresssyntax, getcaprỗng, Caddyversion/adapt/validate, publish3images/configdigestmatch, cleanup và postcheckout đềuSUCCESS. Root đọc joblog hữu hạn: binary`v2.11.7`, actual`Valid configuration`, ba pushdigest bên dưới. Không localDocker hoặc nguồn nền tảng, không fullsuite; lượt failed40918727686 giữ nguyên, không rerun cùng commit để che lỗi.
+
+Tag chung: `sha-2ec80343a94135b3e169b6164804b93f3707debf-run-40919987376-1`. Deploy phải dùng **registry reference theo digest**, không dùng tag này làm pin bất biến. Workflow đã kiểm mỗi publishedmanifest configdigest bằng localimageID của image đã kiểm, rồi mới ghi bảng summary đầy đủ.
+
+| Vai trò | Immutable registry reference | Image ID ở runner đã kiểm |
+| --- | --- | --- |
+| app | `ghcr.io/bthung2747/web-snap-app@sha256:89dee3aba025b735d767ee9d5b1760570d1ca7cd0fcdfd9a04bfc46b1f57414b` | `sha256:90971a6e5fd532268f957858c2651abddbe1f98cfc9547eb30f35dff58ebbd65` |
+| web | `ghcr.io/bthung2747/web-snap-web@sha256:cff11e84300ea17b0fbb91d002e5a092a2948fcc6c48ade48eeafc1ca8c66aba` | `sha256:105f2f96f0ddc58f14618933410e5a550cf2cdb5029a62dc76ca03eacfe919f2` |
+| egress | `ghcr.io/bthung2747/web-snap-egress@sha256:1477bc7d548855dca55d6baf0944e2b372885bedc2efc5698246cd8453ba82d2` | `sha256:b3a85c89926e0696e63026873e7862cf19d55a096baa0f3e4a42e26a07d514fa` |
+
+Official Caddy base dùng thực: `docker.io/library/caddy@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f`. Registrymanifest digest và imageconfig ID là hai khái niệm khác nhau, không thay lẫn trong envtarget. Không đổi packagevisibility; quyền/credential pull trên VPS chưa thiết lập và phải đối chiếu trước preload. Không ghi token/key vào record.
+
+**Đã khép:** đồng bộ đúng mã runtime/production/CI, build và kiểm artifact/Caddy đúng image, publish release đầy đủ. **Chưa làm:** tạoLightsail, càiDocker trênVPS, initvolumes/migrate/admin/settings, TLS/DNS, realstartup/source/native/backuprestore/rollback/P5-P6. Không gọi CI success là toàn productionPASS. Source deploy đóng băng ở2ec8034; commit chỉ ghi kết quả/docs sau đó không cần build lại. Khi nhận target, checkout source/config đúng fullSHA trên rồi pull đúng ba refs theo runbook; không dùng HEAD khác rồi suy cùng release.
+
+Bước kế tiếp: chủ mở Lightsail/Createinstance để đối chiếu một máy Sydney/LinuxOSOnly/Ubuntu24/dual-stackIPv4/4GB80GB24USD, quantity1; chưa có instanceID/IP/SSH hay form thực. Sau khi có target mới tiếp cài đặt/preload/khởi tạo theo runbook và nghiệm thu chênh lệch môi trường. Không tự rerun suite hoặc nguồn lịch sử, không nâng gói AWS/GitHub, đổi visibility hoặc DNS từ việc push/build này.
 
 ## So sánh chi phí cập nhật 28/10/2026
 
