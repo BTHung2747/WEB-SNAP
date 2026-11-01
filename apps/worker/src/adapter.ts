@@ -6,7 +6,7 @@ import { liveProcesses } from './process-registry';
 import { ProcessGroup, ProcessGroupUnconfirmed } from './process-group';
 import { photoPostId, photoLimits, requirePhotoEnabled } from '../../../packages/shared/src/tiktok-photo';
 import { performance } from 'node:perf_hooks';
-import { ProxyPhase, ProxyProofError, SourceTransfer, previewTransfer } from './proxy-phase';
+import { ProxyPhase, ProxyProofError, SourceTransfer, previewTransfer, proxyFinishObservation } from './proxy-phase';
 import { shortTikTok, requireShortEnabled, shortTransfer } from '../../../packages/shared/src/tiktok-short';
 import { videoPostId, videoLimits, requireVideoEnabled, videoTransfer } from '../../../packages/shared/src/tiktok-video';
 export async function runAdapter(
@@ -256,7 +256,7 @@ export async function runAdapter(
         await abortOptional();await discardPreviews();
         if (proxyPhase) {
           await proxyPhase.abort();
-          console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: false, code: error instanceof ProxyProofError ? error.reason : stopped ? reason : 'NATIVE' }));
+          console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: false, code: error instanceof ProxyProofError ? error.reason : stopped ? reason : 'NATIVE', ...proxyFinishObservation(error) }));
         }
         reject(new AppError(stopped ? reason : error instanceof AppError ? error.code : 'CONTENT_UNAVAILABLE'));
       } finally {

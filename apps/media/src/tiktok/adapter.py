@@ -50,7 +50,7 @@ def error_code(error,budget=None):
                     'VIDEO_CODEC_POLICY','VIDEO_DIMENSION_POLICY','TIMELINE_MISMATCH','MUX_FAIL','STREAM_HASH_FAIL','STREAM_COPY_MISMATCH','AUDIO_CODEC_MISMATCH','FILE_METADATA_DURATION_MISMATCH','FFPROBE_FAIL','DECODE_FAIL'):return 'FORMAT_UNAVAILABLE'
     return 'CONTENT_UNAVAILABLE'
 
-def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadline=None):
+def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadline=None,analyze_input_used=0):
     if phase not in ('analyze','prepare'):raise Rejected('UNSUPPORTED_CONTENT')
     url,expected=input_id(url);folder=owned_folder(folder);versions()
     max_input=bound('ADAPTER_MAX_INPUT',262144000,262144000)
@@ -61,6 +61,8 @@ def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadli
     deadline=time.monotonic()+total_seconds
     if analyze_deadline is not None:deadline=min(deadline,analyze_deadline)
     budget=Budget(max_input,max_output,deadline,analyze_seconds)
+    if phase!='analyze' and analyze_input_used!=0:raise Rejected('CAP_POLICY')
+    budget.carry_metadata_bytes(analyze_input_used)
     ydl=GuardedYDL(budget,folder,session_factory,phase_transport=True)
     names=[folder/(base+suffix) for base in ('media.mp4','source-video.mp4','source-audio.mp4') for suffix in ('','.part','.ytdl')]
     existing={p for p in names if p.exists()}

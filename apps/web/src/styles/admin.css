@@ -1,4 +1,5 @@
 /* Existing admin behavior, presented as an operations workspace. */
+.app-admin{font-family:'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.6}
 .app-admin{background:#edf1f3;min-height:100vh}.app-admin .nav{min-height:66px;padding:10px 32px;border-bottom:1px solid #d4dde2;max-width:none;background:#fff}.app-admin .nav nav{font-size:12px}.app-admin .brand{font-size:19px}.app-admin .brand-icon{width:34px;height:34px;font-size:27px}
 .admin{max-width:1280px;margin:30px auto 40px;padding:0 32px;min-height:65vh}
 .admin h1{font-size:32px;letter-spacing:-.04em;line-height:1.2;margin:8px 0}.admin h2{font-size:18px;letter-spacing:-.02em;line-height:1.3;margin:22px 0 12px;font-weight:650}
@@ -77,6 +78,21 @@
 .state-ready{color:#286145}.state-ready::before{background:#32845c}.state-failed{color:#a33422}.state-failed::before{background:#b63d18}
 .state-selectable{color:#66512e}.state-selectable::before{background:#9a7735}
 .admin .muted{font-size:13px;line-height:1.65}
+
+/* Readable Vietnamese type without changing the public site or admin behavior. */
+.admin h1{font-weight:700;letter-spacing:-.02em;line-height:1.35}
+.admin h2,.admin .settings-group legend,.admin .admin-support legend{font-weight:600;letter-spacing:normal;line-height:1.5}
+.admin-heading>div{min-width:0}
+.admin-subtitle,.admin.is-authenticated .admin-content>.muted,.admin .muted{font-size:14px;line-height:1.7}
+.admin label{font-size:14px;font-weight:500;line-height:1.6}
+.admin input:not([type='checkbox']),.admin select{font-size:15px;font-weight:400;line-height:1.5}
+.admin .settings-field>span{font-size:14px;font-weight:500;line-height:1.6}
+.admin .settings-field>small,.admin .settings-group>.muted,.admin .settings-top p{font-size:13px;line-height:1.6}
+.admin.is-authenticated .admin-tabs::before{font-size:12px;letter-spacing:.04em;line-height:1.6}
+.admin.is-authenticated .admin-tabs .active{font-weight:600}
+.admin.is-authenticated .metrics span{font-size:14px;line-height:1.6}
+.admin.is-authenticated .admin-dashboard-grid h2{font-size:18px;font-weight:600}
+.admin table{font-size:14px;line-height:1.6}.admin th{font-size:13px}
 @media(max-width:1050px){.admin.is-authenticated{grid-template-columns:200px minmax(0,1fr);gap:20px;padding:20px}.admin.is-authenticated .admin-dashboard-grid{grid-template-columns:1fr}.admin.is-authenticated .metrics article{padding:18px}.admin.is-authenticated .metrics span{font-size:12px}}
 @media(max-width:760px){
 .app-admin .nav{padding:10px 18px;min-height:64px}.app-admin .nav nav>a:not(.nav-status){display:none}
@@ -87,4 +103,17 @@
 .admin.is-authenticated .admin-tabs button:last-child{margin:0 0 0 auto;padding:11px 8px;border:0;font-size:10px}.admin.is-authenticated .admin-content{order:1}.admin.is-authenticated .admin-content>*{margin-bottom:18px}
 .admin.is-authenticated .metrics{grid-template-columns:1fr}.admin.is-authenticated .metrics article{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-right:0;border-bottom:1px solid #d8e0e5;gap:12px}.admin.is-authenticated .metrics strong{font-size:27px;margin:0}.admin.is-authenticated .metrics span{font-size:12px}
 .admin.is-authenticated .admin-dashboard-grid{display:grid;gap:20px}.admin.is-authenticated .admin-dashboard-grid h2{font-size:16px;margin:0 0 10px}.admin table{font-size:12px}.admin th{font-size:11px}.admin td,.admin th{padding:12px}
+}
+
+@media(max-width:760px){
+ .admin.is-authenticated .admin-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;overflow:visible}
+ .admin.is-authenticated .admin-tabs button{min-width:0;font-size:14px;line-height:1.5;white-space:normal;padding:11px 12px}
+ .admin.is-authenticated .admin-tabs button:last-child{grid-column:1/-1;margin:0;border-top:1px solid #4a555d;padding:11px 12px;font-size:14px}
+ .admin-heading>.secondary,.admin.is-authenticated .admin-heading>.secondary{font-size:13px;line-height:1.5;min-height:44px}
+ .admin .settings-field{grid-template-columns:minmax(0,1fr);gap:5px;padding:14px 0}
+ .admin .settings-field>span{grid-row:auto;font-size:14px}
+ .admin .settings-field>input:not([type='checkbox']),.admin .settings-field>small{grid-column:1}
+ .admin input:not([type='checkbox']),.admin select{font-size:16px;min-height:44px}
+ .admin .muted,.admin.is-authenticated .metrics span,.admin table{font-size:14px}
+ .admin th,.admin .platform-toggles small{font-size:12px}
 }

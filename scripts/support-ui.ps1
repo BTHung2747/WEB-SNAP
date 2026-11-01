@@ -1,5 +1,6 @@
 # Real UI/API/PG/Redis, one disposable loopback namespace. No image build/source.
-param([ValidateSet('Start','Stop','Watchdog')][string]$Action='Start',[string]$Receipt)
+param([ValidateSet('Start','Stop','Watchdog')][string]$Action='Start',[string]$Receipt,
+ [ValidateRange(1024,65535)][int]$Port=5202,[string]$UiPath)
 $ErrorActionPreference='Stop';$root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $docker='C:\Program Files\Docker\Docker\resources\bin\docker.exe'
 $appImage='sha256:5b994d8c9c4ed29ce550f0d60539a8071a2f2e233d9c840013c45802c08a7ba3'
@@ -40,10 +41,19 @@ if($Action -ne 'Start'){
 }
 $run=[guid]::NewGuid().ToString('N');$out=Join-Path $root ('lab-runs\support-ui-real-20261101-'+$run)
 New-Item -ItemType Directory -Path $out|Out-Null
+# Operator credentials inherit a private ACL in this owned disposable directory.
+$acl=Get-Acl -LiteralPath $out;$acl.SetAccessRuleProtection($true,$false)
+foreach($sid in @([Security.Principal.WindowsIdentity]::GetCurrent().User,[Security.Principal.SecurityIdentifier]::new('S-1-5-18'))){
+ $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,'FullControl','ContainerInherit,ObjectInherit','None','Allow'))
+}
+Set-Acl -LiteralPath $out -AclObject $acl
+$probe=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,$Port)
+try{$probe.Start()}finally{$probe.Stop()}
 $Receipt=Join-Path $out 'receipt.json';$prefix='ws-support-ui-'+$run
-$r=@{run=$run;url='http://127.0.0.1:5202';pg=$null;redis=$null;api=$null;web=$null;network=$null;frontNetwork=$null;sourceRequests=0;createdUtc=[DateTime]::UtcNow.ToString('o');cleanupDeadlineUtc=[DateTime]::UtcNow.AddSeconds(1900).ToString('o')}
+$r=@{run=$run;url=('http://127.0.0.1:'+$Port);pg=$null;redis=$null;api=$null;web=$null;network=$null;frontNetwork=$null;sourceRequests=0;createdUtc=[DateTime]::UtcNow.ToString('o');cleanupDeadlineUtc=[DateTime]::UtcNow.AddSeconds(1900).ToString('o')}
 function SaveReceipt {$r|ConvertTo-Json|Set-Content -LiteralPath $Receipt}
-$ui=Join-Path $root 'docs\evidence\support-page-admin-20261031\ui\web'
+$ui=if($UiPath){[IO.Path]::GetFullPath($UiPath)}else{Join-Path $root 'docs\evidence\support-page-admin-20261031\ui\web'}
+if(!$ui.StartsWith($root+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or !(Test-Path -LiteralPath (Join-Path $ui 'index.html'))){throw 'UI_ARTIFACT_PATH'}
 $inputs=@('apps/api/src/app.module.ts','apps/api/src/controllers/support.controller.ts','apps/api/src/services/support-contract.ts','apps/api/src/services/support-image.ts','apps/api/src/services/support.service.ts','apps/api/src/security/support-upload.ts','tests/support-live.ts','scripts/support-ui.ps1')
 @($inputs|ForEach-Object {@{path=$_;sha256=(Get-FileHash -LiteralPath (Join-Path $root $_)).Hash.ToLowerInvariant()}})|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $out 'source-pins.json')
 @((@(Get-Item -LiteralPath (Join-Path $ui 'index.html'))+@(Get-ChildItem -LiteralPath (Join-Path $ui 'assets') -File))|ForEach-Object {@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName).Hash.ToLowerInvariant()}})|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $out 'ui-pins.json')
@@ -62,7 +72,7 @@ try{
  if(!$ready){throw 'PG_DEADLINE'}
  $args=@('create','--name',($prefix+'-api'),'--label',('com.wed-snap.support-ui='+$run),'--network',$prefix,'--network-alias','api','--user','1000:1000','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--ipc','private','--memory','384m','--memory-swap','384m','--cpus','0.75','--pids-limit','96',
  '--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=32m,uid=1000,gid=1000','--env','TRUSTED_PROXY_HOSTS=web',
- '--env','SUPPORT_LIVE_GUARD=own-loopback-support-20261101','--env','APP_ORIGIN=http://127.0.0.1:5202','--env','COOKIE_SECURE=false',
+ '--env','SUPPORT_LIVE_GUARD=own-loopback-support-20261101','--env',('APP_ORIGIN='+$r.url),'--env',('SUPPORT_LIVE_PORT='+$Port),'--env','COOKIE_SECURE=false',
  '--env','DATABASE_URL=postgresql://support_lab:public-loopback-lab-only@postgres:5432/support_lab','--env','REDIS_URL=redis://redis:6379/0',
  '--env','ADMIN_SESSION_SECRET=support-loopback-only-signing-not-production-secret','--env','VERIFIED_PLATFORMS=',
  '--env','TIKTOK_ADAPTER_ENABLED=0','--env','TIKTOK_PHOTO_ENABLED=0','--env','TIKTOK_VIDEO_ENABLED=0','--env','TIKTOK_EGRESS_POLICY_ENABLED=0','--env','TIKTOK_PREVIEW_ENABLED=0',
@@ -77,10 +87,10 @@ try{
   if(!$guard.ReadonlyRootfs -or $guard.Memory -le 0 -or $guard.Memory -ne $guard.MemorySwap -or $guard.CapDrop -notcontains 'ALL' -or $guard.Privileged -or $guard.NetworkMode -ne $prefix){throw 'GUARD'}
  }
  Native 'api-start' @('start',$r.api)|Out-Null
- $webArgs=@('create','--name',($prefix+'-web'),'--label',('com.wed-snap.support-ui='+$run),'--network',($prefix+'-front'),'--user','1000:1000','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--ipc','private','--memory','128m','--memory-swap','128m','--cpus','0.25','--pids-limit','48','--publish','127.0.0.1:5202:5202',
+ $webArgs=@('create','--name',($prefix+'-web'),'--label',('com.wed-snap.support-ui='+$run),'--network',($prefix+'-front'),'--user','1000:1000','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--ipc','private','--memory','128m','--memory-swap','128m','--cpus','0.25','--pids-limit','48','--publish',('127.0.0.1:'+$Port+':'+$Port),
  '--tmpfs','/tmp:rw,noexec,nosuid,nodev,size=32m,uid=1000,gid=1000','--env','NODE_OPTIONS=--max-old-space-size=80',
  '--mount',('type=bind,source='+$ui+',target=/ui,readonly'),'--mount',('type=bind,source='+(Join-Path $root 'apps/web/vite.config.ts')+',target=/app/apps/web/vite.config.ts,readonly'),
- $appImage,'/usr/bin/timeout','--signal=TERM','--kill-after=5s','1800s','node','node_modules/vite/bin/vite.js','preview','--config','apps/web/vite.config.ts','--configLoader','runner','--outDir','/ui','--host','0.0.0.0','--port','5202','--strictPort')
+ $appImage,'/usr/bin/timeout','--signal=TERM','--kill-after=5s','1800s','node','node_modules/vite/bin/vite.js','preview','--config','apps/web/vite.config.ts','--configLoader','runner','--outDir','/ui','--host','0.0.0.0','--port',$Port.ToString(),'--strictPort')
  $r.web=(Native 'web-create' $webArgs).output;SaveReceipt
  Native 'web-private-connect' @('network','connect','--alias','web',$prefix,$r.web)|Out-Null
  Native 'web-start' @('start',$r.web)|Out-Null

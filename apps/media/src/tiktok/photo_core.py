@@ -209,7 +209,7 @@ def _code(error, budget):
     return 'CONTENT_UNAVAILABLE'
 
 
-def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=None, cancelled=None, diagnostics=None, analyze_deadline=None):
+def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=None, cancelled=None, diagnostics=None, analyze_deadline=None, analyze_input_used=0):
     budget = ydl = output = None
     success = False
     result = private = None
@@ -222,6 +222,8 @@ def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=
         limits = (PhotoLimits.from_env() if limits is None else limits).validate()
         versions()
         budget = PhotoBudget(limits, phase, cancelled, analyze_deadline)
+        require(phase == 'analyze' or analyze_input_used == 0, 'CAP_POLICY')
+        budget.carry_metadata_bytes(analyze_input_used)
         budget.check()
         if phase == 'prepare':
             output = _Output(folder)

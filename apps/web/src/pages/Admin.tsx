@@ -171,23 +171,23 @@ export default function Admin({ session }: { session: Session }) {
   const numericLabels: Record<string, string> = {
     maxDuration: 'Thời lượng tối đa (giây)',
     maxBytes: 'Dung lượng đầu ra tối đa (byte)',
-    maxInputBytes: 'Tổng byte đầu vào tối đa',
-    analyzeTimeout: 'Deadline phân tích (giây)',
-    prepareTimeout: 'Deadline chuẩn bị (giây)',
-    sessionTtl: 'Hết hạn heartbeat (giây)',
-    releaseGrace: 'Grace rời trang (giây)',
-    readyTtl: 'TTL tệp chưa tải (giây)',
+    maxInputBytes: 'Tổng dung lượng đầu vào tối đa (byte)',
+    analyzeTimeout: 'Thời gian phân tích tối đa (giây)',
+    prepareTimeout: 'Thời gian chuẩn bị tối đa (giây)',
+    sessionTtl: 'Thời gian chờ duy trì phiên (giây)',
+    releaseGrace: 'Thời gian chờ sau khi rời trang (giây)',
+    readyTtl: 'Thời gian giữ tệp chưa tải (giây)',
     sweepSeconds: 'Chu kỳ dọn tệp (giây)',
-    leaseTtl: 'Lease truyền (giây)',
-    retryGrace: 'Grace tải lại / Range (giây)',
-    transferMax: 'Deadline truyền tuyệt đối (giây)',
+    leaseTtl: 'Thời hạn lượt truyền (giây)',
+    retryGrace: 'Thời gian cho phép tải tiếp (giây)',
+    transferMax: 'Thời gian truyền tối đa (giây)',
     monthlyBytes: 'Ngân sách dữ liệu ra tháng (byte)',
-    diskStopPercent: 'Ngừng nhận khi disk dùng (%)',
+    diskStopPercent: 'Ngừng nhận khi ổ đĩa đã dùng (%)',
     queueLimit: 'Số tác vụ tối đa',
   };
   const numericGroups = [
     { title: 'Nội dung và dung lượng', note: 'Giới hạn áp dụng cho từng tác vụ.', keys: ['maxDuration', 'maxBytes', 'maxInputBytes'] },
-    { title: 'Thời gian xử lý', note: 'Deadline riêng cho hai giai đoạn lấy thông tin và chuẩn bị.', keys: ['analyzeTimeout', 'prepareTimeout'] },
+    { title: 'Thời gian xử lý', note: 'Giới hạn riêng cho hai giai đoạn lấy thông tin và chuẩn bị.', keys: ['analyzeTimeout', 'prepareTimeout'] },
     { title: 'Phiên, tệp và truyền tải', note: 'Phiên trang và lượt truyền tệp có vòng đời độc lập.', keys: ['sessionTtl', 'releaseGrace', 'readyTtl', 'sweepSeconds', 'leaseTtl', 'retryGrace', 'transferMax'] },
     { title: 'Ngân sách và hàng đợi', note: 'Ngưỡng bảo vệ tài nguyên vận hành.', keys: ['monthlyBytes', 'diskStopPercent', 'queueLimit'] },
   ];
@@ -264,7 +264,7 @@ export default function Admin({ session }: { session: Session }) {
           <p className="muted">Chỉ tài khoản quản trị được cấp quyền mới có thể truy cập. Không chia sẻ thông tin đăng nhập.</p>
         </aside>
         <form className="admin-login" onSubmit={login}>
-          <h2>Đăng nhập admin</h2>
+          <h2>Đăng nhập quản trị</h2>
           <p className="muted">Sử dụng tài khoản quản trị của bạn.</p>
           <label>
             Email
@@ -370,8 +370,8 @@ export default function Admin({ session }: { session: Session }) {
               </div>
               </section></div>
               <p className="muted">
-                Byte dự phòng được tính trước mỗi request. Crash giữ dự phòng để tránh đánh giá thấp
-                ngân sách. Không phải số tính phí của nhà cung cấp.
+                Hệ thống tạm tính dung lượng trước mỗi lượt truyền. Nếu tiến trình dừng bất thường,
+                khoản dự phòng vẫn được giữ để tránh đánh giá thấp ngân sách. Đây không phải số liệu tính phí của nhà cung cấp.
               </p>
             </>
           )}
@@ -386,7 +386,7 @@ export default function Admin({ session }: { session: Session }) {
                   />
                   Nhận tác vụ mới
                 </label>
-                <p>Worker local: 1 tác vụ cùng lúc.</p>
+                <p>Mỗi tiến trình tải xử lý 1 tác vụ tại một thời điểm.</p>
               </div>
               <h2>Nền tảng</h2>
               <div className="platform-toggles">

@@ -11,7 +11,17 @@ export function previewTransfer(url: string,count: number): SourceTransfer {
 }
 const previewCount=(t?: SourceTransfer) => t?.profile==='tiktok-preview-cache' ? Number(/^pv1_([1-9]|[1-4][0-9]|50)_[a-f0-9]{64}$/.exec(t.selection)?.[1]) : 0;
 export class ProxyProofError extends AppError {
-  constructor(readonly reason: string) { super(reason === 'TIMEOUT' ? 'SOURCE_TIMEOUT' : 'CONTENT_UNAVAILABLE'); }
+  constructor(readonly reason: string, readonly finishObservation?: {
+    brokerState: string; connections: number; stopped: boolean; deadlineExceeded: boolean;
+  }) { super(reason === 'TIMEOUT' ? 'SOURCE_TIMEOUT' : 'CONTENT_UNAVAILABLE'); }
+}
+export function proxyFinishObservation(error: unknown) {
+  const o=error instanceof ProxyProofError ? error.finishObservation : undefined;
+  // Only validated reply fields and local booleans; never spread a reply/error.
+  return o && ['OPEN','PENDING','ACCEPTED','REJECTED','UNKNOWN','EXPIRED'].includes(o.brokerState) &&
+    Number.isSafeInteger(o.connections) && o.connections>=0 && o.connections<=50 &&
+    typeof o.stopped==='boolean' && typeof o.deadlineExceeded==='boolean' ? {brokerState:o.brokerState,connections:o.connections,stopped:o.stopped,
+    deadlineExceeded:o.deadlineExceeded,observationTiming:'AFTER_GUARD' as const} : {};
 }
 export class ProxyPhase {
   private nonce = randomBytes(32).toString('hex');
@@ -84,14 +94,19 @@ export class ProxyPhase {
     let p = await this.post('seal');
     const end = Math.min(this.deadline, performance.now() + 5000);
     for (let n = 0; p.state === 'PENDING' && n < 24 && performance.now() < end; n++) {
-      if (stopped()) throw new ProxyProofError('CANCELLED');
+      if (stopped()) throw this.refusal('CANCELLED',p,stopped);
       await new Promise(r => setTimeout(r, Math.max(1, Math.min(100, end - performance.now()))));
       p = await this.post('poll');
     }
-    if (p.state !== 'ACCEPTED' || p.connections < 1 || stopped() || performance.now() >= this.deadline) throw new ProxyProofError(p.state === 'PENDING' ? 'TIMEOUT' : 'REJECTED');
+    if (p.state !== 'ACCEPTED' || p.connections < 1 || stopped() || performance.now() >= this.deadline) throw this.refusal(p.state === 'PENDING' ? 'TIMEOUT' : 'REJECTED',p,stopped);
     const taken = await this.post('take');
-    if (taken.state !== 'ACCEPTED' || taken.connections !== p.connections || stopped() || performance.now() >= this.deadline) throw new ProxyProofError('MISMATCH');
+    if (taken.state !== 'ACCEPTED' || taken.connections !== p.connections || stopped() || performance.now() >= this.deadline) throw this.refusal('MISMATCH',taken,stopped);
     this.cap = ''; return taken.connections;
+  }
+  private refusal(reason: string,p: {state:string;connections:number},stopped:()=>boolean) {
+    // Snapshot after the original guard, not an atomic record of its decision.
+    return new ProxyProofError(reason,{brokerState:p.state,connections:p.connections,
+      stopped:!!stopped(),deadlineExceeded:performance.now()>=this.deadline});
   }
   async abort() {
     if (!this.epoch) return;

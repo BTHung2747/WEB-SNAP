@@ -51,6 +51,17 @@ class Request:
         self.dns={};self.winner=None;self.tunnel=False;self.failed=False;self.loop_closed=False
         self.trace.observe(self.cid,'REQUEST_ACCEPT','END',socketOpen=client.fileno()!=-1)
         self.trace.observe(self.cid,'REQUEST_FINISH','BEGIN',code='BEGIN')
+    def observe_failure(self,stage,direction,error):
+        # Failure-only, bounded observation; never stringify an exception/address.
+        try:
+            if stage not in ('SETUP','HANDOFF','RELAY_READ','RELAY_WRITE','FINISH'):return
+            if direction not in ('CLIENT','UPSTREAM','UNKNOWN'):return
+            code=('RESET' if isinstance(error,ConnectionResetError) or isinstance(error,OSError) and error.errno==errno.ECONNRESET else
+                  'BROKEN_PIPE' if isinstance(error,BrokenPipeError) or isinstance(error,OSError) and error.errno==errno.EPIPE else
+                  'TIMEOUT' if isinstance(error,TimeoutError) else 'OTHER')
+            print(json.dumps(dict(event='egress_request_failed',stage=stage,direction=direction,
+                exceptionCode=code,tunneled=bool(self.tunnel)),separators=(',',':')),flush=True)
+        except Exception:pass
     def require_evidence(self):
         if self.trace.incomplete:raise DiagnosticIncomplete('TRACE_INCOMPLETE')
     def connect(self,host):
@@ -106,9 +117,13 @@ class Request:
     def finish(self):
         error=None
         try:self.registry.close()
-        except BaseException as exc:error=exc;self.failed=True
+        except BaseException as exc:
+            error=exc;self.failed=True;self.observe_failure('FINISH','UNKNOWN',exc)
         finally:
-            if self.winner:self.winner.close()
+            if self.winner:
+                try:self.winner.close()
+                except BaseException as exc:
+                    self.observe_failure('FINISH','UPSTREAM',exc);raise
             self.trace.observe(self.cid,'TUNNEL_CLOSE','END',setupFinished=self.tunnel)
             self.trace.observe(self.cid,'REQUEST_FINISH','ERROR' if self.failed else 'END',code='ERROR' if self.failed else 'OK')
         if error is not None:self.trace.mark_incomplete()

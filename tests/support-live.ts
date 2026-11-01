@@ -11,7 +11,8 @@ import { AppModule } from '../apps/api/src/app.module';
 import { SafeErrors } from '../apps/api/src/common';
 import { clientIdentityMiddleware } from '../apps/api/src/security/client-ip';
 import { db,redis,queue,defaults,passwordHash } from '../packages/shared/src/core';
-if(process.env.SUPPORT_LIVE_GUARD!=='own-loopback-support-20261101'||process.env.APP_ORIGIN!=='http://127.0.0.1:5202'||
+const labPort=Number(process.env.SUPPORT_LIVE_PORT||5202);
+if(process.env.SUPPORT_LIVE_GUARD!=='own-loopback-support-20261101'||!Number.isInteger(labPort)||labPort<1024||labPort>65535||process.env.APP_ORIGIN!==`http://127.0.0.1:${labPort}`||
  !/^postgresql:\/\/support_lab:.*@postgres:5432\/support_lab$/.test(process.env.DATABASE_URL||'')||process.env.REDIS_URL!=='redis://redis:6379/0'||process.env.TIKTOK_ADAPTER_ENABLED!=='0')throw Error('LAB_GUARD');
 async function main(){
  await redis.ping();

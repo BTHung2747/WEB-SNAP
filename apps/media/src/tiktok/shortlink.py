@@ -1,7 +1,7 @@
 """AGPL-3.0: bounded redirect glue, Requests/urllib3 own HTTP/cookies/TLS."""
 import hashlib,os,re,time,urllib.parse
 import requests
-from .core import Budget,PROXY
+from .core import Budget,BoundedBody,PROXY
 from .photo_proxy import PhotoProxyAdapter
 from .session_owner import SessionOwner
 from .send_diagnostics import classify
@@ -30,11 +30,11 @@ def route(raw,base=None):
         return {'url':canonical,'kind':match[2],'id':match[3]}
     except ValueError:raise ShortError('INVALID_URL') from None
 
-def resolve_short(url,deadline,session_factory=None):
+def resolve_short(url,deadline,session_factory=None,*,budget=None):
     target=route(url)
     binding='ts1_'+hashlib.sha256(target['url'].encode()).hexdigest()
     if target['kind']!='short' or os.environ.get('WED_MEDIA_PROFILE')!='tiktok-short-analyze' or os.environ.get('WED_MEDIA_SELECTION')!=binding:raise ShortError('UNSUPPORTED_CONTENT')
-    budget=Budget(deadline=deadline);seen=set()
+    budget=Budget(deadline=deadline) if budget is None else budget;seen=set()
     base=(session_factory or requests.Session)();base.trust_env=False
     try:
         if session_factory is None:base.mount('https://',PhotoProxyAdapter(max_retries=0))
@@ -60,13 +60,19 @@ def resolve_short(url,deadline,session_factory=None):
                 if len(values)!=1:raise ShortError('CONTENT_UNAVAILABLE')
                 requests.cookies.extract_cookies_to_jar(base.cookies,request,response.raw)
                 target=route(values[0],current)
+                # Reach EOF through the existing decoded cap/deadline wrapper before
+                # releasing the response. Never cache HTML or drain without bounds.
+                body=BoundedBody(response,budget,row)
+                try:
+                    while body.read(16384):pass
+                finally:body.close()
             finally:
-                # Redirect bodies are deliberately not consumed: zero decoded bytes.
                 if response is not None:response.close()
             if target['kind']!='short':return target
         raise ShortError('CONTENT_UNAVAILABLE')
     except ShortError:raise
     except Exception as error:
+        if budget.failure=='BYTE_LIMIT':raise ShortError('LIMIT_EXCEEDED') from None
         timed_out=budget.failure in ('DEADLINE','SOURCE_TIMEOUT') or classify(error)[0] in ('READ_TIMEOUT','CONNECT_TIMEOUT','TIMEOUT_UNKNOWN')
         raise ShortError('SOURCE_TIMEOUT' if timed_out else 'CONTENT_UNAVAILABLE') from None
     finally:
@@ -76,17 +82,18 @@ def resolve_short(url,deadline,session_factory=None):
 def analyze_short(url,folder,session_factory=None):
     from .adapter import bound,execute,error_code
     deadline=time.monotonic()+bound('ADAPTER_ANALYZE_TIMEOUT',30,30)
-    resolved=resolve_short(url,deadline,session_factory)
+    budget=Budget(input_cap=bound('ADAPTER_MAX_INPUT',262144000,262144000),deadline=deadline)
+    resolved=resolve_short(url,deadline,session_factory,budget=budget)
     if os.environ.get('TIKTOK_ADAPTER_ENABLED')!='1' or 'tiktok' not in os.environ.get('VERIFIED_PLATFORMS','').split(','):raise ShortError('UNSUPPORTED_PLATFORM')
     flag='TIKTOK_PHOTO_ENABLED' if resolved['kind']=='photo' else 'TIKTOK_VIDEO_ENABLED'
     if os.environ.get(flag)!='1':raise ShortError('UNSUPPORTED_PLATFORM')
     if time.monotonic()>=deadline:raise ShortError('SOURCE_TIMEOUT')
-    if resolved['kind']=='video':result=execute('analyze',resolved['url'],folder,session_factory=session_factory,analyze_deadline=deadline)
+    if resolved['kind']=='video':result=execute('analyze',resolved['url'],folder,session_factory=session_factory,analyze_deadline=deadline,analyze_input_used=budget.network_total)
     else:
         from .photo_core import analyze_album,PhotoLimits
         limits=PhotoLimits.from_env()
         limits=PhotoLimits(limits.input_bytes,limits.output_bytes,min(limits.metadata_seconds,deadline-time.monotonic()),limits.prepare_seconds)
-        result=analyze_album(resolved['url'],folder,limits=limits,session_factory=session_factory,analyze_deadline=deadline)
+        result=analyze_album(resolved['url'],folder,limits=limits,session_factory=session_factory,analyze_deadline=deadline,analyze_input_used=budget.network_total)
     if time.monotonic()>=deadline:raise ShortError('SOURCE_TIMEOUT')
     return {**result,'resolved':resolved}
 

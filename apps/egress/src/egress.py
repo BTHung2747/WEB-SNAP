@@ -19,7 +19,7 @@ def public_addresses(host):
     return addresses
 class Handler(socketserver.StreamRequestHandler):
     def handle(self):
-        upstream=None;policy=None
+        upstream=None;policy=None;stage='SETUP';direction='UNKNOWN'
         try:
             self.connection.settimeout(10)
             line=self.rfile.readline(4097)
@@ -55,22 +55,33 @@ class Handler(socketserver.StreamRequestHandler):
                         if upstream: upstream.close()
                         upstream=None
             if upstream is None: raise ValueError('unreachable')
+            stage='HANDOFF';direction='UNKNOWN'
             if policy:policy.before_handoff()
+            direction='CLIENT'
             self.connection.sendall(b'HTTP/1.1 200 Connection established\r\n\r\n')
+            direction='UNKNOWN'
             if policy:policy.after_handoff()
             last=time.monotonic();end=last+240
             while time.monotonic()<end and time.monotonic()-last<30:
+                stage='RELAY_READ';direction='UNKNOWN'
                 ready,_,_=select.select([self.connection,upstream],[],[],1)
                 for source in ready:
+                    stage='RELAY_READ';direction='CLIENT' if source is self.connection else 'UPSTREAM'
                     buf=source.recv(65536)
                     if not buf:return
+                    stage='RELAY_WRITE';direction='UPSTREAM' if source is self.connection else 'CLIENT'
                     (upstream if source is self.connection else self.connection).sendall(buf);last=time.monotonic()
-        except Exception:
-            if policy:policy.failed=True
+        except Exception as error:
+            if policy:
+                policy.failed=True;policy.observe_failure(stage,direction,error)
             try:self.connection.sendall(b'HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n')
             except OSError:pass
         finally:
-            if upstream:upstream.close()
+            if upstream:
+                try:upstream.close()
+                except BaseException as error:
+                    if policy:policy.observe_failure('FINISH','UPSTREAM',error)
+                    raise
             if policy:policy.finish()
 class Server(socketserver.ThreadingTCPServer):
     allow_reuse_address=True

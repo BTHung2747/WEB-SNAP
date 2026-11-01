@@ -61,6 +61,11 @@ class Budget:
         self.requests+=1
         row={'index':self.requests,'phase':self.mode,'method':'GET','url':'[url-redacted]','decodedBytes':0}
         self.rows.append(row);return row
+    def carry_metadata_bytes(self,consumed):
+        # Resolve and canonical metadata have separate request quotas, one byte cap.
+        if self.mode!='metadata' or self.requests or self.total or self.network_total or type(consumed) is not int or not 0<=consumed<=min(self.total_cap,self.input_cap):
+            raise ValueError('CAP_POLICY')
+        self.total=self.network_total=consumed
     def prepare(self,media_requests=1):
         if media_requests not in (1,2):raise ValueError('REQUEST_POLICY')
         self.mode='prepare';self.response_cap=self.input_cap;self.total_cap=self.input_cap

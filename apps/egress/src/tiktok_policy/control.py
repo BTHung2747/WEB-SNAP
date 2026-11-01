@@ -2,6 +2,18 @@
 import base64,hmac,http.server,ipaddress,json,os,re,secrets,socket,threading,time
 from .dns_admission import strict_loads
 HEX=re.compile(r'[a-f0-9]{64}')
+# Existing batch validator codes only. This log whitelist is not an acceptance rule.
+VALIDATION_REASON_CODES=frozenset('''ACTIVE_BUDGET ADVANCE_NOT_CLOSED BATCH_FIELDS BATCH_SCHEMA BEGIN_BUDGET
+CONTEXT_HANDOFF CONTEXT_LIFECYCLE DNS_COUNT DUPLICATE_OWNER_REGISTRY ELAPSED_CONFLICT EXTRA_RECEIPT_FIELD
+FINAL_BATCH_STATE FINAL_PHYSICAL GROUP_COUNT_RECORDS GROUP_DNS_RANGE GROUP_FLOOR GROUP_INDEX_UNKNOWN
+GROUP_ORDER GROUP_TERMINAL HANDOFF_ORDER HOSTNAME_ENUM LIBRARY_GROUP_COUNT LIVE_NUMERIC NOT_WINNER
+OPERATION_COVERAGE OPERATION_OUTSIDE_GROUP OWNER_DISJOINT OWNER_ROLE PEAK_CONFLICT RECEIPT_CONTEXT_SET
+RECEIPT_IDENTITY RECEIPT_REGISTRY_SET RECEIPT_SCHEMA RECEIPT_SET_UNKNOWN RECORD_INDEX RECORD_NUMERIC
+RECORD_SCHEMA REGISTRY_CLOSE_COUNT REGISTRY_CLOSE_INDEX REGISTRY_CLOSE_LIVE REGISTRY_CLOSE_NUMERIC
+REGISTRY_CLOSE_ORDER REGISTRY_CLOSE_SCHEMA REGISTRY_CLOSE_TERMINAL REGISTRY_COMPLETION_ORDER
+REGISTRY_COMPLETION_UNKNOWN RELATIONSHIP_UNKNOWN SOCKET_RECORD_COUNT SUCCESS_SEQUENCE SUCCESS_TYPE
+SUFFIX_CONFLICT TCP_SOCKET_COUNT TERMINAL_RECORD_CONFLICT TRACE_OWNER TRACE_RELATIONSHIP WINNER_COUNT
+WINNER_HANDOFF_STATE WINNER_TCP_STATUS'''.split())
 def hex64(value):return type(value) is str and HEX.fullmatch(value) is not None
 def credentials(headers):
     values=headers.get_all('Proxy-Authorization',[])
@@ -100,6 +112,14 @@ class Broker:
                         try:ctx.client.shutdown(socket.SHUT_RDWR)
                         except OSError:pass
             state=self.state(e);reply=self.reply(p,e,state)
+            if p['op'] in ('seal','poll') and state in ('REJECTED','EXPIRED'):
+                # Same locked state used for the reply; no trace/auth/request data.
+                try:
+                    print(json.dumps(dict(event='proxy_finish_refused',phase=e['phase'],operation=p['op'],brokerState=state,
+                        expired=bool(e['expired']),failed=bool(e['failed']),consumed=bool(e['consumed']),sealed=bool(e['sealed']),
+                        memberCount=len(e['members']),pendingMemberCount=sum(v['ctx'] is not None for v in e['members'].values()),
+                        unacceptedMemberCount=sum(v['accepted'] is not True for v in e['members'].values())),separators=(',',':')),flush=True)
+                except Exception:pass # Diagnostics cannot prevent the original reply.
             if p['op']=='take' and state=='ACCEPTED':e['consumed']=True
             return reply
     def attach(self,auth,ctx):
@@ -128,6 +148,28 @@ class Broker:
                 and ctx.registry.live()==0 and not ctx.registry.pending and not ctx.registry.reap_failed
                 and ctx.dns.get('dnsExit')==0 and ctx.dns.get('dnsChildReaped') is True and ctx.dns.get('dnsGroupLeft')==0)
             member.update(ctx=None,accepted=bool(accepted))
+            if not accepted:
+                # Snapshot after the original check/update; never emit result/trace.
+                try:
+                    def flag(value,key):
+                        value=value.get(key) if type(value) is dict else None
+                        return value if type(value) is bool else None
+                    def number(key):
+                        value=ctx.dns.get(key)
+                        return value if type(value) is int else None
+                    validation=result.get('validation') if type(result) is dict else None
+                    codes=validation.get('reasonCodes') if type(validation) is dict else None
+                    codes=[c for c in codes[:48] if type(c) is str and len(c)<=32 and c in VALIDATION_REASON_CODES][:8] if type(codes) is list else []
+                    print(json.dumps(dict(event='proxy_member_refused',phase=e['phase'],observationTiming='AFTER_ACCEPTANCE_CHECK',
+                        resultAccepted=flag(result,'accepted'),ownerMatch=type(result) is dict and result.get('ownerID')==ctx.cid,
+                        validationAccepted=flag(validation,'accepted'),validationReasonCodes=codes,
+                        workerThreadClosed=flag(result,'workerThreadClosed'),clientClosed=flag(result,'clientClosed'),loopClosed=flag(result,'loopClosed'),
+                        ctxClientClosed=ctx.client.fileno()==-1,ctxLoopClosed=bool(ctx.loop_closed),
+                        traceIncomplete=flag(result,'traceIncomplete'),ctxTraceIncomplete=bool(ctx.trace.incomplete),ctxFailed=bool(ctx.failed),
+                        registryClean=ctx.registry.live()==0 and not ctx.registry.pending and not ctx.registry.reap_failed,
+                        dnsExit=number('dnsExit'),dnsChildReaped=flag(ctx.dns,'dnsChildReaped'),dnsGroupLeft=number('dnsGroupLeft')),
+                        separators=(',',':')),flush=True)
+                except Exception:pass # Member closure/decision already recorded above.
 
 class ControlHandler(http.server.BaseHTTPRequestHandler):
     """Reuse stdlib HTTP parser with the CONNECT handler's bounded first line/streams."""
