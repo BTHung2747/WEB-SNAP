@@ -9,6 +9,7 @@ export default function Footer({ productName = 'WED SNAP' }: { productName?: str
         <a href="/terms">Điều khoản</a>
         <a href="/privacy">Quyền riêng tư</a>
         <a href="/report">Báo cáo nội dung</a>
+        <a href="/ung-ho">Ủng hộ</a>
         <a href="/admin">Quản trị</a>
       </div>
     </footer>

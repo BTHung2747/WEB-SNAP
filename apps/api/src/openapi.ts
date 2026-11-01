@@ -26,7 +26,7 @@ export function describeContracts(doc: OpenAPIObject) {
       const operation = item[method];
       if (!operation) continue;
       const mutation = ['post', 'put', 'delete'].includes(method);
-      const publicRoute = path.endsWith('/health') || path.endsWith('/session');
+      const publicRoute = path.endsWith('/health') || path.endsWith('/session') || path==='/api/v1/support' || path==='/api/v1/support/qr/{id}';
       const adminRoute =
         path.includes('/admin/') && !path.endsWith('/login') && !path.endsWith('/logout');
       operation.security = publicRoute

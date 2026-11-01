@@ -2,9 +2,10 @@
 # Public high-level extraction; Requests/urllib3 own HTTP, TLS, cookies and decompression.
 import copy,hashlib,importlib.metadata as md,io,json,math,pathlib,re,subprocess,sys,time,urllib.parse
 import requests,urllib3,yt_dlp
+from video_policy import full_hd
 from yt_dlp.networking import Request,Response
 from yt_dlp.networking.exceptions import RequestError
-from .candidate_file import inspect_file
+from .candidate_file import inspect_file,video_codec
 from .send_diagnostics import observed_send,classify
 from .prepare_operations import Operations
 from .connection_boundaries import BoundaryObserver,ObservedAdapter
@@ -60,9 +61,10 @@ class Budget:
         self.requests+=1
         row={'index':self.requests,'phase':self.mode,'method':'GET','url':'[url-redacted]','decodedBytes':0}
         self.rows.append(row);return row
-    def prepare(self):
+    def prepare(self,media_requests=1):
+        if media_requests not in (1,2):raise ValueError('REQUEST_POLICY')
         self.mode='prepare';self.response_cap=self.input_cap;self.total_cap=self.input_cap
-        self.max_requests=1;self.requests=0;self.total=0;self.deadline=self.phase_deadline;self.failure=None
+        self.max_requests=media_requests;self.requests=0;self.total=0;self.deadline=self.phase_deadline;self.failure=None
 
 class BoundedBody(io.RawIOBase):
     def __init__(self,response,budget,row):
@@ -99,7 +101,7 @@ class BoundedBody(io.RawIOBase):
 
 class GuardedYDL(yt_dlp.YoutubeDL):
     def __init__(self,budget,folder,session_factory=None,*,phase_transport=False):
-        self.budget=budget;self.allowed_url=None;self.session=None;self.source_failed=False
+        self.budget=budget;self.allowed_url=None;self.media_urls=None;self.used_media_urls=set();self.session=None;self.source_failed=False
         opts={'quiet':True,'no_warnings':True,'logger':Silent(),'noplaylist':True,'cachedir':False,
               'cookiefile':None,'cookiesfrombrowser':None,'usenetrc':False,'proxy':PROXY,
               'socket_timeout':10,'retries':0,'fragment_retries':0,'extractor_retries':0,
@@ -130,7 +132,11 @@ class GuardedYDL(yt_dlp.YoutubeDL):
     def _bounded_urlopen(self,request):
         if isinstance(request,str):request=Request(request)
         self.budget.check();u=https(request.url)
-        if request.url!=self.allowed_url or request.method!='GET' or request.data is not None:self.budget.fail('REQUEST_POLICY')
+        if request.method!='GET' or request.data is not None:self.budget.fail('REQUEST_POLICY')
+        if self.budget.mode=='prepare' and self.media_urls is not None:
+            if request.url not in self.media_urls or request.url in self.used_media_urls:self.budget.fail('REQUEST_POLICY')
+            self.used_media_urls.add(request.url)
+        elif request.url!=self.allowed_url:self.budget.fail('REQUEST_POLICY')
         headers=dict(self.params['http_headers']);headers.update(dict(request.headers))
         for k in list(headers):
             if k.lower() in ('authorization','proxy-authorization'):self.budget.fail('CREDENTIAL_HEADER_DENIED')
@@ -170,16 +176,21 @@ class GuardedYDL(yt_dlp.YoutubeDL):
             self.cookiejar.clear();self.budget.latest_body=None
             super().close()
 
-def allowed_formats(info,expected_id,output_cap):
+def allowed_formats(info,expected_id,output_cap,*,include_video_only=False):
     if not isinstance(info,dict) or str(info.get('id'))!=expected_id or info.get('_type','video')!='video':raise RuntimeError('CONTENT_POLICY')
     duration=info.get('duration')
     if not isinstance(duration,(int,float)) or not math.isfinite(duration) or not 0<duration<=600 or info.get('is_live'):raise RuntimeError('DURATION_POLICY')
     candidates=[]
     for f in info.get('formats') or []:
         fid=f.get('format_id','')
-        # Pinned web formatter emits 'play' or a parsed h264 bitrate id for PlayAddr.
-        if not (fid=='play' or re.fullmatch(r'h264_\d+p_\d+',fid)):continue
-        if f.get('ext')!='mp4' or f.get('vcodec') not in ('h264','avc1') or f.get('acodec') in (None,'none') or f.get('has_drm'):continue
+        # Accept only pinned formatter PlayAddr identities, never downloadAddr.
+        if not (fid=='play' or re.fullmatch(r'(?:h264|h265|bytevc1)_\d+p_\d+',fid)):continue
+        codec=video_codec(f.get('vcodec'))
+        if f.get('ext')!='mp4' or codec is None or f.get('has_drm'):continue
+        if f.get('acodec') not in ('aac','none'):continue
+        if f.get('acodec') in (None,'none') and not (include_video_only and codec=='hevc' and f.get('acodec')=='none'):continue
+        if not full_hd(f.get('width'),f.get('height')):continue
+        if fid!='play' and codec!=('h264' if fid.startswith('h264_') else 'hevc'):continue
         if 'watermark' in str(f.get('format_note','')).lower():continue
         u=https(f['url'])
         if f.get('protocol') not in (None,'http','https') or f.get('fragments') or f.get('manifest_url') or u.path.lower().endswith(('.m3u8','.mpd')):continue

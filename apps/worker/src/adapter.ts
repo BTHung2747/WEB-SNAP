@@ -1,13 +1,14 @@
 import { spawn } from 'node:child_process';
-import { mkdir, readdir, stat } from 'node:fs/promises';
+import { mkdir, readdir, stat, lstat, unlink, link } from 'node:fs/promises';
 import { after, AppError, db, filePath, ownerExpired } from '../../../packages/shared/src/core';
 import { diskAvailable } from './lifecycle';
 import { liveProcesses } from './process-registry';
 import { ProcessGroup, ProcessGroupUnconfirmed } from './process-group';
 import { photoPostId, photoLimits, requirePhotoEnabled } from '../../../packages/shared/src/tiktok-photo';
 import { performance } from 'node:perf_hooks';
-import { ProxyPhase, ProxyProofError } from './proxy-phase';
-import { videoPostId, videoLimits, requireVideoEnabled } from '../../../packages/shared/src/tiktok-video';
+import { ProxyPhase, ProxyProofError, SourceTransfer, previewTransfer } from './proxy-phase';
+import { shortTikTok, requireShortEnabled, shortTransfer } from '../../../packages/shared/src/tiktok-short';
+import { videoPostId, videoLimits, requireVideoEnabled, videoTransfer } from '../../../packages/shared/src/tiktok-video';
 export async function runAdapter(
   id: string,
   phase: string,
@@ -18,11 +19,27 @@ export async function runAdapter(
 ): Promise<any> {
   const photo = !!photoPostId(url);
   const video = !!videoPostId(url);
+  const short = shortTikTok(url);
+  if (short) { requireShortEnabled(l.enabledPlatforms); l = videoLimits(l); if (phase !== 'analyze') throw new AppError('FORMAT_UNAVAILABLE'); }
   if (photo) { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
   if (video) { requireVideoEnabled(l.enabledPlatforms); l = videoLimits(l); }
   const absoluteEnd = performance.now() + (phase === 'analyze' ? l.analyzeTimeout : l.prepareTimeout) * 1000;
+  let transfer: SourceTransfer | undefined;
+  if (short) transfer = shortTransfer(short);
+  if (video && phase === 'prepare') {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      const current = await Promise.race([
+        db.downloadJob.findUnique({ where: { id }, include: { items: true } }),
+        new Promise<never>((_,reject) => { timer = setTimeout(() => reject(new AppError('SOURCE_TIMEOUT')), Math.max(1,Math.min(1000,absoluteEnd-performance.now()))); }),
+      ]);
+      if (!current || current.workerToken !== token || current.cancelRequested || ownerExpired(current) ||
+          current.state !== 'preparing' || current.sourceUrl !== url || current.formatId !== format) throw new AppError('JOB_EXPIRED');
+      transfer = videoTransfer(current.items,format || '',videoPostId(url)!);
+    } finally { if (timer) clearTimeout(timer); }
+  }
   let proxyPhase: ProxyPhase | undefined;
-  try { proxyPhase = photo || video ? await ProxyPhase.open(phase, id, token, absoluteEnd) : undefined; }
+  try { proxyPhase = photo || video || short ? await ProxyPhase.open(phase, id, token, absoluteEnd, transfer) : undefined; }
   catch (error) {
     console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: false, code: error instanceof ProxyProofError ? error.reason : 'CHANNEL' }));
     throw error instanceof AppError ? error : new AppError('CONTENT_UNAVAILABLE');
@@ -35,6 +52,7 @@ export async function runAdapter(
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AppError('SOURCE_TIMEOUT')), Math.max(1, Math.min(1000, absoluteEnd - performance.now()))); }),
       ]);
       if (!current || current.cancelRequested || ownerExpired(current) || current.workerToken !== token) throw new AppError('JOB_EXPIRED');
+      if (short && (current.sourceUrl !== url || current.state !== 'analyzing')) throw new AppError('JOB_EXPIRED');
       if (performance.now() >= absoluteEnd) throw new AppError('SOURCE_TIMEOUT');
     } catch (error) { await proxyPhase.abort(); throw error; }
     finally { if (timer) clearTimeout(timer); }
@@ -42,9 +60,23 @@ export async function runAdapter(
   const childEnv = { ...process.env };
   delete childEnv.TIKTOK_EGRESS_CONTROL_SECRET;
   delete childEnv.WED_EGRESS_PHASE; delete childEnv.WED_EGRESS_CAP;
+  delete childEnv.WED_MEDIA_PROFILE; delete childEnv.WED_MEDIA_SELECTION;
+  delete childEnv.WED_PREVIEW_REQUEST;
   if (proxyPhase) Object.assign(childEnv, proxyPhase.childEnv());
   const folder = filePath(id);
   await mkdir(folder, { recursive: true });
+  const cacheName=(name: string)=> /^(previews(?:\.pending)?\.json|preview-input\.part|preview-(?:video|ttp1_[0-9]{2}_[a-f0-9]{64})\.jpg)$/.test(name);
+  // A new analyze alone may create this optional cache. Never remove an earlier
+  // invocation's files. Prepare only reads the immutable accepted index.
+  const previews = phase==='analyze' && !!proxyPhase && process.env.TIKTOK_PREVIEW_ENABLED==='1' && !(await readdir(folder)).some(cacheName);
+  if (previews) childEnv.WED_PREVIEW_REQUEST='1';
+  const discardPreviews=async()=>{
+    if (!previews) return;
+    for(const name of (await readdir(folder)).filter(cacheName)) {
+      const path=filePath(`${id}/${name}`),s=await lstat(path);
+      if(s.isFile()&&!s.isSymbolicLink()) await unlink(path);
+    }
+  };
   if (performance.now() >= absoluteEnd) { await proxyPhase?.abort(); throw new AppError('SOURCE_TIMEOUT'); }
   return new Promise((resolve, reject) => {
     liveProcesses.add(token);
@@ -62,7 +94,7 @@ export async function runAdapter(
           ADAPTER_ANALYZE_TIMEOUT: String(l.analyzeTimeout),
           ADAPTER_PREPARE_TIMEOUT: String(l.prepareTimeout),
         },
-        stdio: ['ignore', 'pipe', 'ignore'],
+        stdio: [previews ? 'pipe' : 'ignore', 'pipe', 'ignore'],
       },
     );
     const group = child.pid ? new ProcessGroup(child.pid) : undefined;
@@ -74,11 +106,37 @@ export async function runAdapter(
     let signalFailure = false;
     let settled = false;
     let groupStopped = false;
+    let optionalPhase: ProxyPhase | undefined, optionalOpening: Promise<void> | undefined;
+    let optionalRequested=false, optionalAccepted=false, lines='';
+    const abortOptional=async()=>{await optionalOpening;await optionalPhase?.abort();};
+    const previewRequest=(line: string)=>{
+      let packet: any;try { packet=JSON.parse(line); } catch { return; }
+      if(!packet || !Object.prototype.hasOwnProperty.call(packet,'_preview')) return;
+      if(optionalRequested) { child.stdin?.end(); return; }
+      optionalRequested=true;
+      optionalOpening=(async()=>{
+        try {
+          const p=packet._preview;
+          if(!previews || Object.keys(packet).length!==1 || !p || Object.keys(p).join()!=='count' ||
+             !Number.isSafeInteger(p.count)||p.count<1||p.count>50||(video&&p.count!==1)||stopped || settled || absoluteEnd-performance.now()<9000) throw new Error('PREVIEW_REQUEST');
+          // Its own expiry includes fetch/normalization + closure and precedes
+          // the mandatory metadata deadline. An optional proof timeout must not
+          // spend the final metadata second and turn a valid analyze into FAIL.
+          const optionalEnd=Math.min(absoluteEnd-1000,performance.now()+8000);
+          optionalPhase=await ProxyPhase.open('analyze',id,token,optionalEnd,previewTransfer(url,p.count));
+          if(stopped||settled) { await optionalPhase.abort(); return; }
+          const env=optionalPhase.childEnv();
+          child.stdin?.end(JSON.stringify({phase:env.WED_EGRESS_PHASE,cap:env.WED_EGRESS_CAP,seconds:Math.min(30,(optionalEnd-performance.now())/1000)})+'\n');
+        } catch { child.stdin?.end('{}\n'); }
+      })();
+    };
+    child.stdin?.on('error',()=>{}); // A child may finish before optional grant; no retry.
     let quarantineTimer: NodeJS.Timeout | undefined;
     const quarantine = (message: string) => {
       if (settled) return;
       settled = true;
       proxyPhase?.interrupt(); void proxyPhase?.abort();
+      optionalPhase?.interrupt(); void abortOptional();
       clearTimeout(deadline); clearInterval(poll);
       if (killTimer) clearTimeout(killTimer);
       if (quarantineTimer) clearTimeout(quarantineTimer);
@@ -93,6 +151,7 @@ export async function runAdapter(
       reason = code;
       stopAt = Date.now();
       proxyPhase?.interrupt();
+      optionalPhase?.interrupt();
       if (groupStopped) return;
       void signalGroup('SIGTERM');
       killTimer = setTimeout(() => {
@@ -105,9 +164,13 @@ export async function runAdapter(
       () => stop('SOURCE_TIMEOUT'),
       Math.max(1, absoluteEnd - performance.now()),
     );
-    child.stdout.on('data', (b: Buffer) => {
+    child.stdout!.on('data', (b: Buffer) => {
       output += b.toString();
       if (Buffer.byteLength(output) > 1024 * 1024) stop('LIMIT_EXCEEDED');
+      if(previews && !optionalRequested) {
+        lines+=b.toString();let split;
+        while((split=lines.indexOf('\n'))>=0) {const line=lines.slice(0,split);lines=lines.slice(split+1);previewRequest(line);}
+      }
     });
     const poll = setInterval(async () => {
       if (polling || stopped) return;
@@ -169,9 +232,28 @@ export async function runAdapter(
           const connections = await proxyPhase.finish(() => stopped);
           console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: true, connections }));
         }
+        if(previews) {
+          try {
+            await optionalOpening;
+            if(optionalPhase && !stopped && performance.now()<absoluteEnd) {
+              const connections=await optionalPhase.finish(()=>stopped);
+              // No-overwrite publication only after native exit0/group reap and
+              // the independent preview proof. Public API never reads pending.
+              const pending=filePath(`${id}/previews.pending.json`),s=await lstat(pending);
+              if(!s.isFile()||s.isSymbolicLink()) throw new Error('PREVIEW_INDEX');
+              await link(pending,filePath(`${id}/previews.json`));await unlink(pending);
+              optionalAccepted=true;
+              console.log(JSON.stringify({event:'preview_phase_gate',id,accepted:true,connections}));
+            }
+          } catch { /* Optional rejection preserves valid metadata, never proof bypass. */ }
+          finally {
+            if(!optionalAccepted) {await abortOptional();await discardPreviews();console.log(JSON.stringify({event:'preview_phase_gate',id,accepted:false}));}
+          }
+        }
         if (stopped || performance.now() >= absoluteEnd) throw new AppError(stopped ? reason : 'SOURCE_TIMEOUT');
         resolve(data);
       } catch (error) {
+        await abortOptional();await discardPreviews();
         if (proxyPhase) {
           await proxyPhase.abort();
           console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: false, code: error instanceof ProxyProofError ? error.reason : stopped ? reason : 'NATIVE' }));

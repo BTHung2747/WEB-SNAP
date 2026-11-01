@@ -4,6 +4,7 @@ import IORedis from 'ioredis';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
+import { normalizeTikTok } from './tiktok-short';
 
 export const db = new PrismaClient();
 export const redis = new IORedis(process.env.REDIS_URL || 'redis://redis:6379', {
@@ -139,7 +140,7 @@ export function validateUrl(value: unknown): { url: string; platform: string } {
   } catch {
     return fail('INVALID_URL');
   }
-  if (u.protocol !== 'https:' || u.username || u.password || u.port || u.hash) fail('INVALID_URL');
+    if (u.protocol !== 'https:' || u.username || u.password || u.port) fail('INVALID_URL');
   const h = u.hostname.toLowerCase();
   const groups: Record<string, string[]> = {
     youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'],
@@ -149,6 +150,8 @@ export function validateUrl(value: unknown): { url: string; platform: string } {
   };
   const platform = Object.keys(groups).find((p) => groups[p].includes(h));
   if (!platform) fail('UNSUPPORTED_PLATFORM');
+    if (platform === 'tiktok') return { platform, url: normalizeTikTok(value) };
+    if (u.hash) fail('INVALID_URL');
   if (platform === 'youtube' && (u.searchParams.has('list') || u.pathname.startsWith('/live')))
     fail('UNSUPPORTED_CONTENT');
   // Strip tracking/query data; short-link redirects are checked again by the egress proxy.

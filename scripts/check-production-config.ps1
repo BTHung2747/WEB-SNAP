@@ -1,5 +1,5 @@
 # Offline only: standalone Compose rendering. No Docker engine or real env file.
-param([string]$ComposeExecutable='C:\Program Files\Docker\Docker\resources\cli-plugins\docker-compose.exe')
+param([string]$ComposeExecutable='C:\Program Files\Docker\Docker\resources\cli-plugins\docker-compose.exe',[switch]$PreviewOnly)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $temp=Join-Path $root ('.production-config-check-'+[guid]::NewGuid().ToString('N'))
@@ -41,9 +41,34 @@ function Render([string]$content,[bool]$success=$true){
  }finally{$p.Dispose()}
 }
 function Require([bool]$ok,[string]$code){if(!$ok){throw $code}}
+function PreviewRoles($config,[string]$expected){
+ foreach($role in @('worker','egress')){Require ($config.services.$role.environment.TIKTOK_PREVIEW_ENABLED -ceq $expected) 'PREVIEW_ROLE_FLAG'}
+ foreach($role in @('api','maintenance','proxy','postgres','redis')){
+  $environment=$config.services.$role.environment
+  Require (!$environment -or !$environment.PSObject.Properties['TIKTOK_PREVIEW_ENABLED']) 'PREVIEW_FLAG_WRONG_ROLE'
+ }
+}
 $report=[ordered]@{utc=[DateTime]::UtcNow.ToString('o');scope='offline fake env; no Docker engine/images/network/service actions';cases=@();result='FAIL'}
 try{
  $r=Render $text;$c=$r.config
+ PreviewRoles $c '0'
+ if($PreviewOnly){
+  $report.cases+=@{name='preview unset defaults0 only worker+egress';result='PASS';actualExit=$r.actualExit;elapsedMs=$r.elapsedMs}
+  foreach($flag in @('0','1')){
+   $p=Render ($text+"`nTIKTOK_PREVIEW_ENABLED=$flag`n");PreviewRoles $p.config $flag
+   foreach($role in @('api','worker')){foreach($gate in @('TIKTOK_ADAPTER_ENABLED','TIKTOK_PHOTO_ENABLED','TIKTOK_VIDEO_ENABLED','TIKTOK_EGRESS_POLICY_ENABLED')){Require ($p.config.services.$role.environment.$gate -ceq '0') 'PREVIEW_MUST_NOT_ENABLE_PLATFORM'}}
+   Require ($p.config.services.egress.environment.TIKTOK_EGRESS_POLICY_ENABLED -ceq '0') 'PREVIEW_MUST_NOT_ENABLE_EGRESS'
+   $report.cases+=@{name="preview explicit$flag exact roles; platform gates remain0";result='PASS';actualExit=$p.actualExit;elapsedMs=$p.elapsedMs}
+  }
+  $example=[IO.File]::ReadAllText((Join-Path $root 'infra/production/production.env.example'))
+  Require ([regex]::Matches($example,'(?m)^TIKTOK_PREVIEW_ENABLED=0\r?$').Count -eq 1) 'PREVIEW_EXAMPLE_DEFAULT'
+  $ignore=[IO.File]::ReadAllLines((Join-Path $root '.dockerignore'))
+  foreach($path in @('lab-runs','labs','design','apps/web/dev','docs/evidence')){Require ($ignore -contains $path) 'RELEASE_CONTEXT_EXCLUDES_FIXTURES'}
+  $report.cases+=@{name='example flag0 and lab/fixture build-context exclusions';result='PASS';kind='source inspection only'}
+  $report.notRun=@('Docker engine/build/pull/start','historical config suite','real env/settings/source/API/download/preview','commit/push/publish/deploy')
+  $report.result='PASS_OFFLINE_CONFIG_ONLY'
+  return
+ }
  Require ($c.name -eq 'wed-snap-production') 'PROJECT_NOT_SEPARATE'
  Require (($c.services.PSObject.Properties.Name|Sort-Object) -join ',' -eq 'api,egress,maintenance,postgres,proxy,redis,worker') 'EXACT_SERVICES'
  foreach($role in @('api','worker','postgres','redis','egress','maintenance','proxy')){
@@ -72,6 +97,7 @@ try{
  Require ($c.services.api.volumes[0].read_only -and !$c.services.worker.volumes[0].read_only) 'MEDIA_OWNERSHIP'
  $report.cases+=@{name='standalone default-off topology/ports/guards/origin/compiled/secret forwarding';result='PASS';actualExit=$r.actualExit;elapsedMs=$r.elapsedMs}
  $on=Render ($text+"`nTIKTOK_ADAPTER_ENABLED=1`nTIKTOK_PHOTO_ENABLED=1`nTIKTOK_VIDEO_ENABLED=1`nTIKTOK_EGRESS_POLICY_ENABLED=1`n")
+ PreviewRoles $on.config '0'
  Require ($on.config.services.api.environment.TIKTOK_VIDEO_ENABLED -ceq '1' -and $on.config.services.worker.environment.TIKTOK_VIDEO_ENABLED -ceq '1' -and $on.config.services.egress.environment.TIKTOK_EGRESS_POLICY_ENABLED -ceq '1') 'ASSIGNED_GATES_FORWARD'
  $report.cases+=@{name='explicit target-stage gate forwarding';result='PASS';actualExit=$on.actualExit;elapsedMs=$on.elapsedMs}
  $missing=Render ($text.Replace('POSTGRES_PASSWORD=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','POSTGRES_PASSWORD=')) $false

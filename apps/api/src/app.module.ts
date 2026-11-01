@@ -9,6 +9,9 @@ import { AdsService } from './services/ads.service';
 import { DownloadsService } from './services/downloads.service';
 import { JobsService } from './services/jobs.service';
 import { SessionService } from './services/session.service';
+import { SupportController } from './controllers/support.controller';
+import { SupportService } from './services/support.service';
+import { SupportUploadGuard,SupportUploadInterceptor } from './security/support-upload';
 @Module({
   controllers: [
     SessionController,
@@ -16,7 +19,8 @@ import { SessionService } from './services/session.service';
     DownloadsController,
     AdsController,
     AdminController,
+    SupportController,
   ],
-  providers: [SessionService, JobsService, DownloadsService, AdsService, AdminService],
+  providers: [SessionService, JobsService, DownloadsService, AdsService, AdminService,SupportService,SupportUploadGuard,SupportUploadInterceptor],
 })
 export class AppModule {}

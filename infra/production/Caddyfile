@@ -16,6 +16,25 @@
     }
 }
 
+# Shared forwarding/cancellation policy; args are matcher and header timeout.
+(api_proxy) {
+    reverse_proxy {args[0]} api:3000 {
+        header_up -Forwarded
+        header_up -X-Real-IP
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Forwarded-Host {http.request.host}
+        header_up X-Forwarded-Proto https
+        # Positive flushing retains cancellation on client disconnect.
+        # Do NOT use -1: low-latency mode suppresses that cancellation.
+        flush_interval 100ms
+        transport http {
+            dial_timeout 3s
+            response_header_timeout {args[1]}
+            compression off
+        }
+    }
+}
+
 {$PUBLIC_HOST} {
     header {
         -Server
@@ -26,25 +45,26 @@
     }
     @api path /api /api/*
     handle @api {
-        request_body {
+        # Only authenticated QR upload needs multipart headroom. API guard still
+        # runs before Multer; all other API endpoints retain the64KiB ceiling.
+        @supportQRUpload {
+            method POST
+            path /api/v1/admin/support/qr
+        }
+        request_body @supportQRUpload {
+            max_size 2162688
+        }
+        @otherAPI not {
+            method POST
+            path /api/v1/admin/support/qr
+        }
+        request_body @otherAPI {
             max_size 64KB
         }
-        reverse_proxy api:3000 {
-            # Exact peer identity; no user-supplied multi-hop forwarding chain.
-            header_up -Forwarded
-            header_up -X-Real-IP
-            header_up X-Forwarded-For {http.request.remote.host}
-            header_up X-Forwarded-Host {http.request.host}
-            header_up X-Forwarded-Proto https
-            # Positive flushing retains cancellation on client disconnect.
-            # Do NOT use -1 (Caddy's low-latency mode suppresses that cancellation).
-            flush_interval 100ms
-            transport http {
-                dial_timeout 3s
-                response_header_timeout 10s
-                compression off
-            }
-        }
+        # Header waiting starts after the upstream request body is fully sent.
+        # Only exact QR POST gets finite headroom over the application's20s guard.
+        import api_proxy @supportQRUpload 25s
+        import api_proxy @otherAPI 10s
     }
     handle {
         root * /srv

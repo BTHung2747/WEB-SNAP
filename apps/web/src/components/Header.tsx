@@ -14,6 +14,7 @@ export default function Header({ productName = 'WED SNAP' }: { productName?: str
       <nav aria-label="Điều hướng">
         <a href="/#how">Cách sử dụng</a>
         <a href="/privacy">Quyền riêng tư</a>
+        <a href="/ung-ho">Ủng hộ</a>
         <a className="nav-status" href="/#support">
           Nền tảng
         </a>

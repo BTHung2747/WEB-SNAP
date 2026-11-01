@@ -64,9 +64,10 @@ def input_photo(url):
 
 
 class PhotoBudget(Budget):
-    def __init__(self, limits, phase, cancelled=None):
+    def __init__(self, limits, phase, cancelled=None, deadline=None):
         self.cancelled = cancelled
         self.prepare_end = time.monotonic() + (limits.metadata_seconds if phase == 'analyze' else limits.prepare_seconds)
+        if deadline is not None:self.prepare_end=min(self.prepare_end,deadline)
         self.metadata_bytes = 0
         super().__init__(limits.input_bytes, limits.output_bytes, self.prepare_end, limits.metadata_seconds)
 
@@ -208,7 +209,7 @@ def _code(error, budget):
     return 'CONTENT_UNAVAILABLE'
 
 
-def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=None, cancelled=None, diagnostics=None):
+def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=None, cancelled=None, diagnostics=None, analyze_deadline=None):
     budget = ydl = output = None
     success = False
     result = private = None
@@ -220,7 +221,7 @@ def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=
             require(not (folder / name).is_symlink(), 'INVALID_ASSET_PATH')
         limits = (PhotoLimits.from_env() if limits is None else limits).validate()
         versions()
-        budget = PhotoBudget(limits, phase, cancelled)
+        budget = PhotoBudget(limits, phase, cancelled, analyze_deadline)
         budget.check()
         if phase == 'prepare':
             output = _Output(folder)
@@ -248,6 +249,8 @@ def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=
                             stream.write(chunk)
                             budget.check()
             checked, digest = inspect_jpeg(output.part, mime, ops, chosen, budget.check)
+            from .preview_cache import verify_photo
+            verify_photo(folder, selected, output.part, budget.prepare_end - 5, limits.output_bytes)
             budget.check()
             require(0 < output.part.stat().st_size <= limits.output_bytes, 'LIMIT_EXCEEDED')
             output.publish()
@@ -258,6 +261,10 @@ def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=
         ydl.close()
         ydl = None
         budget.check()
+        if phase == 'analyze':
+            from .preview_cache import generate
+            generate(folder, [(row['id'], image['url']) for row, image in zip(result['formats'], private['images'])], budget.deadline,session_factory=session_factory)
+            budget.check()
         success = True
         return result
     except Exception as error:

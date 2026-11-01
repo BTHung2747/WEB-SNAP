@@ -15,6 +15,9 @@ export type Format = {
   index?: number;
   width?: number;
   height?: number;
+  sourceDefault?: boolean;
+  highest?: boolean;
+  previewUrl?: string | null;
 };
 export type Job = {
   id: string;

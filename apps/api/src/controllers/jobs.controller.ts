@@ -45,6 +45,10 @@ export class JobsController {
   ) {
     return this.service.preview(req, id, res);
   }
+  @Get('jobs/:id/preview/:formatId')
+  async photoPreview(@Req() req: Request, @Param('id') id: string, @Param('formatId') formatId: string, @Res() res: Response) {
+    return this.service.preview(req,id,res,formatId);
+  }
   @Post('jobs/:id/prepare')
   @ApiBody({
     schema: {

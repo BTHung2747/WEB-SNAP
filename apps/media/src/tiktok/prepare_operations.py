@@ -1,8 +1,8 @@
 # AGPL-3.0 lab glue: fixed labels/numbers only, standard subprocess APIs.
 import contextlib,json,os,pathlib,subprocess,time
-OPS={'DOWNLOADER','OUTPUT_CHECK','FFPROBE','CONTRACT','DECODE','HASH'}
-POLICY_CODES={'MP4_CONTAINER_REQUIRED','H264_AUDIO_REQUIRED','DURATION_POLICY','METADATA_DURATION_POLICY',
- 'FILE_METADATA_DURATION_MISMATCH','FILE_LIMIT_OR_MISSING','FFPROBE_FAIL','DECODE_FAIL','PREPARE_DEADLINE'}
+OPS={'DOWNLOADER','OUTPUT_CHECK','FFPROBE','CONTRACT','DECODE','HASH','MUX','STREAM_HASH'}
+POLICY_CODES={'MP4_CONTAINER_REQUIRED','H264_AUDIO_REQUIRED','HEVC_AUDIO_REQUIRED','VIDEO_CODEC_POLICY','AUDIO_CODEC_MISMATCH','DURATION_POLICY','METADATA_DURATION_POLICY',
+ 'VIDEO_DIMENSION_POLICY','TIMELINE_MISMATCH','MUX_FAIL','STREAM_HASH_FAIL','STREAM_COPY_MISMATCH','FILE_METADATA_DURATION_MISMATCH','FILE_LIMIT_OR_MISSING','FFPROBE_FAIL','DECODE_FAIL','PREPARE_DEADLINE'}
 class Operations:
     def __init__(self,deadline=None,sink='tiktok-operations.jsonl',root=None):
         self.deadline=deadline if deadline is not None else time.monotonic()+180
@@ -48,5 +48,5 @@ class Operations:
                 p.kill();p.communicate();row['returncode']=p.returncode
                 raise # cmd/output stay inside RAM; whitelist exports the type only.
             row['returncode']=p.returncode
-            if p.returncode:raise RuntimeError('FFPROBE_FAIL' if operation=='FFPROBE' else 'DECODE_FAIL')
+            if p.returncode:raise RuntimeError({'FFPROBE':'FFPROBE_FAIL','MUX':'MUX_FAIL','STREAM_HASH':'STREAM_HASH_FAIL'}.get(operation,'DECODE_FAIL'))
             return subprocess.CompletedProcess(argv,p.returncode,out,None)

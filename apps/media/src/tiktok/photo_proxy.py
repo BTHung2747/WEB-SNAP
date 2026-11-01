@@ -6,8 +6,9 @@ def phase_credentials():
     if not re.fullmatch('[a-f0-9]{64}',a) or not re.fullmatch('[a-f0-9]{64}',b):raise ValueError('PROXY_PHASE_REQUIRED')
     return a,b
 class PhotoProxyAdapter(ObservedAdapter):
-    def __init__(self,*args,**kwargs):
-        self.phase_credentials=phase_credentials()
+    def __init__(self,*args,credentials=None,**kwargs):
+        self.phase_credentials=phase_credentials() if credentials is None else credentials
+        if not isinstance(self.phase_credentials,tuple) or len(self.phase_credentials)!=2 or not all(type(v) is str and re.fullmatch('[a-f0-9]{64}',v) for v in self.phase_credentials):raise ValueError('PROXY_PHASE_REQUIRED')
         super().__init__(*args,**kwargs)
     def proxy_headers(self,proxy):
         headers=super().proxy_headers(proxy)

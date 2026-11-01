@@ -16,7 +16,8 @@ import { runAdapter } from './adapter';
 import { ProcessGroupUnconfirmed } from './process-group';
 import { diskAvailable } from './lifecycle';
 import { photoPostId, photoLimits, requirePhotoEnabled, checkedPhotoMetadata, checkedPhotoFile, selectedPhoto } from '../../../packages/shared/src/tiktok-photo';
-import { videoPostId, videoLimits, requireVideoEnabled } from '../../../packages/shared/src/tiktok-video';
+import { videoPostId, videoLimits, requireVideoEnabled, selectedVideo, checkedVideoFormats } from '../../../packages/shared/src/tiktok-video';
+import { shortTikTok, requireShortEnabled, checkedResolved } from '../../../packages/shared/src/tiktok-short';
 export async function processJob(queued: any) {
   const id = queued.data.id;
   const phase = queued.name;
@@ -43,6 +44,10 @@ export async function processJob(queued: any) {
     }
     const photo = !!(current.sourceUrl && photoPostId(current.sourceUrl));
     try {
+      if (current.sourceUrl && shortTikTok(current.sourceUrl)) {
+        requireShortEnabled(l.enabledPlatforms); l = videoLimits(l);
+        if (phase !== 'analyze') throw new AppError('FORMAT_UNAVAILABLE');
+      }
       if (current.sourceUrl && videoPostId(current.sourceUrl)) {
         requireVideoEnabled(l.enabledPlatforms); l = videoLimits(l);
       }
@@ -60,6 +65,7 @@ export async function processJob(queued: any) {
       try {
         if (photo !== (current.items.length === 1 && current.items[0].kind === 'photo')) throw new AppError('FORMAT_UNAVAILABLE');
         if (photo) selectedPhoto(current.items, current.formatId || '', photoPostId(current.sourceUrl!)!);
+        if (current.sourceUrl && videoPostId(current.sourceUrl)) selectedVideo(current.items,current.formatId || '',videoPostId(current.sourceUrl)!);
         const prior = await tx.temporaryAsset.findUnique({ where: { jobId: id } });
         if (prior && (prior.state !== 'staging' || prior.path !== `${id}/${photo ? 'image.jpg' : 'media.mp4'}`)) throw new AppError('INVALID_ASSET_PATH');
       } catch (error) {
@@ -89,10 +95,24 @@ export async function processJob(queued: any) {
     if (!j.sourceUrl) throw new AppError('JOB_EXPIRED');
     const { validateUrl } = await import('../../../packages/shared/src/core');
     validateUrl(j.sourceUrl);
-    const photoId = photoPostId(j.sourceUrl);
+    let photoId = photoPostId(j.sourceUrl);
     const selection = photoId && phase === 'prepare' ? selectedPhoto(j.items, j.formatId || '', photoId) : null;
     const data = await runAdapter(id, phase, j.sourceUrl, j.formatId, l, token);
+    const resolved = shortTikTok(j.sourceUrl) ? checkedResolved(data.resolved) : null;
+    const canonicalUrl = resolved?.url || j.sourceUrl;
+    if (resolved) {
+      if (phase !== 'analyze') throw new AppError('FORMAT_UNAVAILABLE');
+      if (resolved.kind === 'photo') { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
+      else requireVideoEnabled(l.enabledPlatforms);
+      photoId = photoPostId(canonicalUrl);
+      if (resolved.id !== (photoId || videoPostId(canonicalUrl))) throw new AppError('FORMAT_UNAVAILABLE');
+      // The resolved binding is a worker-only envelope, not part of the strict
+      // canonical photo/video metadata contract or anything persisted as formats.
+      delete data.resolved;
+    }
     const photoMetadata = photoId && phase === 'analyze' ? checkedPhotoMetadata(data, photoId) : null;
+    const videoId = videoPostId(canonicalUrl);
+    const videoFormats = videoId && phase === 'analyze' ? checkedVideoFormats(data.formats,videoId) : null;
     if (!photoId && data.kind && data.kind !== 'video') throw new AppError('FORMAT_UNAVAILABLE');
     if (selection) {
       const checked = checkedPhotoFile(data, selection, l);
@@ -110,11 +130,12 @@ export async function processJob(queued: any) {
       const current = await tx.downloadJob.findUniqueOrThrow({ where: { id }, include: { items: true } });
       if (current.workerToken !== token || current.cancelRequested || ownerExpired(current))
         throw new AppError('JOB_EXPIRED');
+      if (resolved && current.sourceUrl !== j.sourceUrl) throw new AppError('WORKER_INTERRUPTED');
       if (phase === 'analyze') {
         const acceptedAt = new Date();
         const expiresAt = metadataDeadline(acceptedAt, data.sourceExpiresAt);
         if (expiresAt <= acceptedAt) throw new AppError('JOB_EXPIRED');
-        await tx.mediaItem.create({ data: { jobId: id, kind: photoMetadata ? 'photo' : 'video', formats: photoMetadata ? photoMetadata.formats : data.formats } });
+        await tx.mediaItem.create({ data: { jobId: id, kind: photoMetadata ? 'photo' : 'video', formats: photoMetadata ? photoMetadata.formats : videoFormats || data.formats } });
         await tx.downloadJob.update({
           where: { id },
           data: {
@@ -123,6 +144,7 @@ export async function processJob(queued: any) {
             duration: photoMetadata ? null : data.duration,
             metadataAcceptedAt: acceptedAt,
             metadataExpiresAt: expiresAt,
+            ...(resolved ? { sourceUrl: canonicalUrl } : {}),
             workerToken: null,
             processUntil: null,
           },

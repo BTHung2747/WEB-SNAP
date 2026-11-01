@@ -8,7 +8,9 @@ if len(sys.argv)>=4:
         if os.environ.get('TIKTOK_ADAPTER_ENABLED')!='1':
             print(json.dumps({'error':'UNSUPPORTED_PLATFORM'}));sys.exit(1)
         sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media/src'))
-        if '/photo/' in urlsplit(sys.argv[2]).path:
+        if _dispatch_host in ('vt.tiktok.com','vm.tiktok.com') or urlsplit(sys.argv[2]).path.startswith('/t/'):
+            from tiktok.shortlink import main as tiktok_main
+        elif '/photo/' in urlsplit(sys.argv[2]).path:
             from tiktok.photo_adapter import main as tiktok_main
         else:
             if os.environ.get('TIKTOK_VIDEO_ENABLED')!='1':
@@ -16,6 +18,8 @@ if len(sys.argv)>=4:
             from tiktok.adapter import main as tiktok_main
         sys.exit(tiktok_main(sys.argv[1:]))
 import yt_dlp
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media/src'))
+from video_policy import full_hd
 class Rejected(Exception):pass
 phase,url,folder=sys.argv[1:4]
 folder=pathlib.Path(folder);folder.mkdir(parents=True,exist_ok=True)
@@ -63,22 +67,30 @@ def formats(info):
         fid=str(f.get('format_id',''))
         if not fid or not all(c.isalnum() or c in '_-' for c in fid):continue
         # Progressive HTTPS MP4; separate HTTPS H.264/AAC streams are merged by copy.
-        if f.get('ext')=='mp4' and f.get('protocol')=='https' and f.get('vcodec','none')!='none' and f.get('acodec','none')!='none' and not f.get('has_drm'):
+        if f.get('ext')=='mp4' and f.get('protocol')=='https' and f.get('vcodec','none')!='none' and f.get('acodec','none')!='none' and not f.get('has_drm') and full_hd(f.get('width'),f.get('height')):
             size=f.get('filesize');
             if size and size>max_output:continue
-            rows.append({'id':fid,'label':str(f.get('height') or '?')+'p · MP4 · có tiếng','size':size,'height':f.get('height'),'kind':'video'})
+            codec=str(f.get('vcodec') or 'Codec chưa xác định').split('.')[0]
+            rows.append({'id':fid,'label':str(f['width'])+' × '+str(f['height'])+' px · '+codec+' · có tiếng','size':size,'width':f['width'],'height':f['height'],'kind':'video'})
     audio=[a for a in fs if a.get('ext')=='m4a' and a.get('protocol')=='https' and a.get('vcodec','none')=='none' and str(a.get('acodec','')).startswith('mp4a') and not a.get('has_drm') and all(c.isalnum() or c in '_-' for c in str(a.get('format_id','')))]
     audio=sorted(audio,key=lambda a:a.get('abr') or 0,reverse=True)
     if audio:
         a=audio[0]
         for v in fs:
             if v.get('ext')!='mp4' or v.get('protocol')!='https' or v.get('acodec','none')!='none' or not str(v.get('vcodec','')).startswith(('avc1','h264')) or v.get('has_drm'):continue
+            if not full_hd(v.get('width'),v.get('height')):continue
             fid=str(v.get('format_id',''))
             if not fid or not all(c.isalnum() or c in '_-' for c in fid):continue
             size=v.get('filesize')+a.get('filesize') if v.get('filesize') and a.get('filesize') else None
             if size and (size>max_output or size>max_input):continue
-            rows.append({'id':fid+'+'+str(a['format_id']),'label':str(v.get('height') or '?')+'p · MP4 · có tiếng','size':size,'height':v.get('height'),'kind':'video'})
-    return sorted(rows,key=lambda r:r.get('height') or 0)[:30]
+            rows.append({'id':fid+'+'+str(a['format_id']),'label':str(v['width'])+' × '+str(v['height'])+' px · H.264 · có tiếng','size':size,'width':v['width'],'height':v['height'],'kind':'video'})
+    rank=lambda r:(r['width']*r['height'],min(r['width'],r['height']),max(r['width'],r['height']))
+    # yt-dlp's auto-selected format_id is not a source-declared player default.
+    for row in rows:row['sourceDefault']=False
+    rows=sorted(rows,key=lambda r:(not r['sourceDefault'],tuple(-n for n in rank(r))))[:30]
+    best=max((rank(r) for r in rows),default=None)
+    for row in rows:row['highest']=rank(row)==best
+    return rows
 try:
     with BoundedYoutubeDL(opts) as ydl:
         info=ydl.extract_info(url,download=False);valid(info);rows=formats(info)
@@ -99,12 +111,14 @@ try:
             ydl.process_ie_result(info,download=True)
             files=[f for f in folder.glob('media.*') if f.suffix=='.mp4']
             if len(files)!=1 or files[0].stat().st_size>max_output:raise Rejected('LIMIT_EXCEEDED')
-            p=subprocess.run(['ffprobe','-v','error','-show_entries','stream=codec_type,height:format=duration','-of','json',str(files[0])],capture_output=True,text=True,timeout=10)
+            p=subprocess.run(['ffprobe','-v','error','-show_entries','stream=codec_type,width,height:format=duration','-of','json',str(files[0])],capture_output=True,text=True,timeout=10)
             if p.returncode:raise Rejected('FORMAT_UNAVAILABLE')
             probe=json.loads(p.stdout);kinds=[s['codec_type'] for s in probe.get('streams',[])]
             if 'video' not in kinds or 'audio' not in kinds:raise Rejected('FORMAT_UNAVAILABLE')
             chosen=next(r for r in rows if r['id']==selected)
-            if chosen.get('height') and not any(s.get('height')==chosen['height'] for s in probe.get('streams',[]) if s.get('codec_type')=='video'):raise Rejected('FORMAT_UNAVAILABLE')
+            videos=[s for s in probe.get('streams',[]) if s.get('codec_type')=='video']
+            if not videos or any(not full_hd(s.get('width'),s.get('height')) for s in videos):raise Rejected('FORMAT_UNAVAILABLE')
+            if not any(s.get('width')==chosen['width'] and s.get('height')==chosen['height'] for s in videos):raise Rejected('FORMAT_UNAVAILABLE')
             try:probed_duration=float(probe['format'].get('duration'))
             except (TypeError,ValueError):raise Rejected('LIMIT_EXCEEDED')
             if not math.isfinite(probed_duration) or probed_duration>duration_limit:raise Rejected('LIMIT_EXCEEDED')

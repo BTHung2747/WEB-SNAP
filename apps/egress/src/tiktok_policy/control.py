@@ -48,7 +48,9 @@ class Broker:
             try:ctx.client.shutdown(socket.SHUT_RDWR)
             except OSError:pass
     def reply(self,p,e,state):
-        return dict(v=1,id=p['id'],job=p['job'],phase=p['phase'],epoch=e['epoch'] if e else p.get('epoch',''),state=state,connections=len(e['members']) if e else 0)
+        reply=dict(v=p.get('v',1),id=p['id'],job=p['job'],phase=p['phase'],epoch=e['epoch'] if e else p.get('epoch',''),state=state,connections=len(e['members']) if e else 0)
+        if p.get('v')==2:reply.update(profile=p['profile'],selection=p['selection'])
+        return reply
     def state(self,e):
         if e['expired']:return 'EXPIRED'
         if e['failed'] or e['consumed']:return 'REJECTED'
@@ -60,6 +62,14 @@ class Broker:
         self.tick()
         if type(p) is not dict or p.get('op') not in ('open','seal','poll','take','abort'):raise ValueError('CONTROL_SCHEMA')
         keys={'op','id','job','phase'}|({'deadline'} if p['op']=='open' else {'epoch'})
+        pair=p.get('v')==2
+        if pair:
+            keys|={'v','profile','selection'}
+            profile_ok=(p.get('profile')=='hevc-copy-pair' and p.get('phase')=='prepare' and type(p.get('selection')) is str and re.fullmatch(r'tt2_[a-f0-9]{64}',p['selection']))
+            short_ok=(p.get('profile')=='tiktok-short-analyze' and p.get('phase')=='analyze' and type(p.get('selection')) is str and re.fullmatch(r'ts1_[a-f0-9]{64}',p['selection']))
+            preview_ok=(os.environ.get('TIKTOK_PREVIEW_ENABLED')=='1' and p.get('profile')=='tiktok-preview-cache' and p.get('phase')=='analyze'
+                and type(p.get('selection')) is str and re.fullmatch(r'pv1_([1-9]|[1-4][0-9]|50)_[a-f0-9]{64}',p['selection']))
+            if type(p['v']) is not int or not (profile_ok or short_ok or preview_ok):raise ValueError('CONTROL_PROFILE')
         if set(p)!=keys or not hex64(p['id']) or not hex64(p['job']) or p['phase'] not in ('analyze','prepare') or (p['op']!='open' and not hex64(p['epoch'])):raise ValueError('CONTROL_SCHEMA')
         with self.lock:
             e=self.entries.get(p['id'])
@@ -69,11 +79,13 @@ class Broker:
                 remaining=(p['deadline']-time.time()*1000)/1000 if type(p['deadline']) is int else -1
                 if not 0<remaining<=cap+.1:return self.reply(p,None,'EXPIRED')
                 e=dict(job=p['job'],phase=p['phase'],epoch=secrets.token_hex(32),cap=secrets.token_hex(32),end=time.monotonic()+min(cap,remaining),
-                    expired=False,sealed=False,consumed=False,failed=False,members={},queries=0)
+                    expired=False,sealed=False,consumed=False,failed=False,members={},queries=0,
+                    profile=p.get('profile'),selection=p.get('selection'))
                 self.entries[p['id']]=e
                 return dict(self.reply(p,e,'OPEN'),connectKey=e['cap'])
             if not e:return self.reply(p,None,'UNKNOWN')
             if p['job']!=e['job'] or p['phase']!=e['phase'] or p['epoch']!=e['epoch']:return self.reply(p,None,'REJECTED')
+            if p.get('profile')!=e['profile'] or p.get('selection')!=e['selection']:return self.reply(p,None,'REJECTED')
             e['queries']+=1
             if e['queries']>28:e['failed']=True
             if p['op']=='seal':
@@ -96,7 +108,9 @@ class Broker:
         with self.lock:
             e=self.entries.get(key)
             if not self.enabled or not e or e['expired'] or e['sealed'] or e['failed'] or not hmac.compare_digest(e['cap'],cap):raise ValueError('PHASE_DENIED')
-            if len(e['members'])>=(2 if e['phase']=='analyze' else 3):e['failed']=True;raise ValueError('PHASE_OVERFLOW')
+            cap=4 if e['profile'] in ('hevc-copy-pair','tiktok-short-analyze') else 2 if e['phase']=='analyze' else 3
+            if e['profile']=='tiktok-preview-cache':cap=int(e['selection'].split('_')[1])
+            if len(e['members'])>=cap:e['failed']=True;raise ValueError('PHASE_OVERFLOW')
             if ctx.cid in e['members']:e['failed']=True;raise ValueError('PHASE_REPLAY')
             e['members'][ctx.cid]=dict(ctx=ctx,accepted=None);ctx._phase_key=key
     def finish(self,ctx,result):

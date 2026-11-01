@@ -77,6 +77,7 @@ Stack trong mục 0 là phương án triển khai của bản cập nhật này.
 - Lấy chất lượng nguồn cung cấp, có thể ghép hình và tiếng bằng chế độ copy nếu tương thích. Không tự tạo chất lượng cao hơn nguồn.
 - Theo dõi tác vụ, hủy tác vụ, hết hạn phiên, dọn tệp tự động và giới hạn tài nguyên.
 - Banner/hộp tài trợ, mở link quảng cáo khi người dùng chủ động nhấn, quản trị chiến dịch, số liệu hiển thị/nhấp.
+- Bổ sung theo chủ31/10/2026: trang ủng hộ tự nguyện và tab quản trị cạnh Quảng cáo để cấu hình lời kêu gọi, mã QR và thông tin nhận ủng hộ; không chặn luồng tải.
 - Trang hướng dẫn, thông tin quyền riêng tư, điều khoản và kênh báo cáo nội dung. Nội dung liên hệ thực tế cấu hình bởi chủ website.
 
 ### Chưa làm trong MVP
@@ -214,6 +215,12 @@ Tác vụ ready có thể có nhiều request HTTP Range của cùng lượt t�
 Banner hiện trong lúc xử lý; hộp tài trợ có nút đóng ngay. Giới hạn đề xuất 1 hộp/phiên/10 phút; không tự phát âm thanh, không bắt buộc nhấn quảng cáo để tải. Quảng cáo phải có nhãn “Quảng cáo” hoặc “Tài trợ”, tách biệt nút tải.
 
 Không cho admin nhập JavaScript/HTML tùy ý trong MVP. Link YouTube/Shopee do chủ web cấu hình; link affiliate và điều kiện ghi nhận doanh thu phải được kiểm tra khi tích hợp chương trình cụ thể. Không tự tạo tài khoản quảng cáo hay giả định được duyệt.
+
+### 8.1. Ủng hộ tự nguyện — chủ bổ sung31/10/2026
+
+- Trang `/ung-ho` có lời kêu gọi duy trì máy chủ và QR/thông tin nhận tiền do chủ cấu hình. Admin có tab Ủng hộ cạnh Quảng cáo: bật/tắt, sửa tiêu đề/nội dung, tải/thay/gỡ QR, ngân hàng/chủ tài khoản/số tài khoản/nội dung chuyển khoản tùy chọn. Cấu hình và QR phải lưu bền qua restart/redeploy, không lưu ở job/media tạm hoặc chỉ browser state.
+- Mặc định chưa công khai QR/thông tin nhận tiền khi chưa cấu hình; không bịa tài khoản, QR thanh toán, số người ủng hộ hoặc tiền đã nhận. Nội dung là plain text, file ảnh được giới hạn/kiểm loại. Ghi rõ thao tác lưu/đăng hiển thị, không đăng bản nháp âm thầm.
+- Ủng hộ luôn tự nguyện, không popup ép buộc hoặc điều kiện tải; không tự thu tiền, tích hợp cổng thanh toán, webhook, tài khoản trả phí hoặc xác nhận đã nhận tiền trong phạm vi này. Chi tiết triển khai/kiểm cần thiết ở `docs/tasks/SUPPORT_PAGE_ADMIN_20261031.md`.
 
 ## 9. Giới hạn để kiểm soát chi phí
 

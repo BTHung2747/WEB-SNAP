@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { names } from '../lib/platforms';
 import type { Session } from '../types';
+import AdminSupport from '../components/AdminSupport';
 type AdStatistics = { window: { from: string; to: string; timezone: 'UTC' }; rows: { campaignId: string; title: string; impressions: number; clicks: number; ctrPercent: number | null }[] };
 export default function Admin({ session }: { session: Session }) {
   const [logged, setLogged] = useState(false);
@@ -184,12 +185,54 @@ export default function Admin({ session }: { session: Session }) {
     diskStopPercent: 'Ngừng nhận khi disk dùng (%)',
     queueLimit: 'Số tác vụ tối đa',
   };
+  const numericGroups = [
+    { title: 'Nội dung và dung lượng', note: 'Giới hạn áp dụng cho từng tác vụ.', keys: ['maxDuration', 'maxBytes', 'maxInputBytes'] },
+    { title: 'Thời gian xử lý', note: 'Deadline riêng cho hai giai đoạn lấy thông tin và chuẩn bị.', keys: ['analyzeTimeout', 'prepareTimeout'] },
+    { title: 'Phiên, tệp và truyền tải', note: 'Phiên trang và lượt truyền tệp có vòng đời độc lập.', keys: ['sessionTtl', 'releaseGrace', 'readyTtl', 'sweepSeconds', 'leaseTtl', 'retryGrace', 'transferMax'] },
+    { title: 'Ngân sách và hàng đợi', note: 'Ngưỡng bảo vệ tài nguyên vận hành.', keys: ['monthlyBytes', 'diskStopPercent', 'queueLimit'] },
+  ];
+  const numericHelp = (key: string, value: number): string => {
+    const number = (n: number) => n.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+    if (['maxBytes', 'maxInputBytes', 'monthlyBytes'].includes(key))
+      return value >= 1073741824 ? `≈ ${number(value / 1073741824)} GiB` : `≈ ${number(value / 1048576)} MiB`;
+    if (key === 'diskStopPercent') return 'Phần trăm ổ đĩa đã dùng';
+    if (key === 'queueLimit') return 'Tác vụ trong hệ thống';
+    return value >= 60 ? `≈ ${number(value / 60)} phút` : `${number(value)} giây`;
+  };
   return (
-    <main className="admin">
+    <main className={`admin${logged ? ' is-authenticated' : ' is-login'}`}>
+      {logged && (
+          <nav className="admin-tabs" aria-label="Điều hướng quản trị">
+            {[
+              ['dashboard', 'Tổng quan'],
+              ['campaigns', 'Quảng cáo'],
+              ['support', 'Ủng hộ'],
+              ['settings', 'Cấu hình'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                className={key === tab ? 'active' : ''}
+                aria-pressed={key === tab}
+                ref={key === tab ? activeTab : undefined}
+                onClick={() => {
+                  if (key !== tab) invalidateStatistics();
+                  setTab(key);
+                  setError('');
+                  setNotice('');
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            <button disabled={!!busy} onClick={() => void refresh()}>Làm mới ↻</button>
+          </nav>
+      )}
+      <div className="admin-content">
       <div className="admin-heading">
         <div>
-          <span className="eyebrow">KHÔNG GIAN QUẢN TRỊ</span>
-          <h1>Quản lý WED SNAP</h1>
+          <span className="admin-section-label">Không gian quản trị</span>
+          <h1>{logged ? ({ dashboard: 'Tổng quan hoạt động', campaigns: 'Chiến dịch tài trợ', support: 'Thiết lập ủng hộ', settings: 'Cấu hình hệ thống' }[tab] || 'Quản lý WED SNAP') : 'Quản lý WED SNAP'}</h1>
+          <p className="admin-subtitle">{logged ? 'Theo dõi tác vụ, quản lý tài trợ và cấu hình vận hành.' : 'Đăng nhập để quản lý hoạt động của hệ thống.'}</p>
         </div>
         {logged && (
           <button
@@ -213,9 +256,16 @@ export default function Admin({ session }: { session: Session }) {
         </p>
       )}
       {!logged ? (
+        <div className="admin-login-layout">
+        <aside className="admin-login-intro">
+          <span className="brand-icon" aria-hidden="true">w.</span>
+          <h2>Quản lý hoạt động.<br />Giữ mọi thứ trong tầm nhìn.</h2>
+          <p>Tổng quan tác vụ, chiến dịch tài trợ và các giới hạn hệ thống.</p>
+          <p className="muted">Chỉ tài khoản quản trị được cấp quyền mới có thể truy cập. Không chia sẻ thông tin đăng nhập.</p>
+        </aside>
         <form className="admin-login" onSubmit={login}>
           <h2>Đăng nhập admin</h2>
-          <p className="muted">Tài khoản được tạo bằng hướng dẫn trong README.</p>
+          <p className="muted">Sử dụng tài khoản quản trị của bạn.</p>
           <label>
             Email
             <input
@@ -240,31 +290,13 @@ export default function Admin({ session }: { session: Session }) {
           </label>
           <button className="primary" disabled={busy === 'login'}>Đăng nhập →</button>
         </form>
+        </div>
       ) : (
         <>
-          <div className="admin-tabs">
-            {[
-              ['dashboard', 'Tổng quan'],
-              ['campaigns', 'Quảng cáo'],
-              ['settings', 'Cấu hình'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                className={key === tab ? 'active' : ''}
-                aria-pressed={key === tab}
-                ref={key === tab ? activeTab : undefined}
-                onClick={() => {
-                  if (key !== tab) invalidateStatistics();
-                  setTab(key);
-                  setError('');
-                  setNotice('');
-                }}
-              >
-                {label}
-              </button>
-            ))}
-            <button disabled={!!busy} onClick={() => void refresh()}>Làm mới ↻</button>
-          </div>
+          {tab === 'support' && !busy && <AdminSupport csrf={session.csrf} onAuthExpired={() => {
+            ++version.current; clearPrivate(); setBusy('');
+            setError('Phiên quản trị đã hết hạn. Vui lòng đăng nhập lại.');
+          }} />}
           {tab === 'dashboard' && dashboard && (
             <>
               <div className="metrics">
@@ -279,7 +311,7 @@ export default function Admin({ session }: { session: Session }) {
                   </strong>
                 </article>
                 <article>
-                  <span>Byte đã tính / dự phòng</span>
+                  <span>Dữ liệu đã tính trong tháng</span>
                   <strong>
                     {(
                       (Number(
@@ -292,6 +324,7 @@ export default function Admin({ session }: { session: Session }) {
                   </strong>
                 </article>
               </div>
+              <div className="admin-dashboard-grid"><section>
               <h2>Trạng thái tác vụ</h2>
               <div className="table-wrap" role="region" aria-label="Trạng thái tác vụ" tabIndex={0}>
                 <table>
@@ -305,13 +338,14 @@ export default function Admin({ session }: { session: Session }) {
                     {!dashboard.groups.length && <tr><td colSpan={2}>Chưa có tác vụ.</td></tr>}
                     {dashboard.groups.map((g: any) => (
                       <tr key={g.state}>
-                        <td>{g.state}</td>
+                        <td><span className={`job-state state-${g.state}`}>{({ready:'Sẵn sàng',selectable:'Chờ lựa chọn',failed:'Thất bại',analyzing:'Đang phân tích',queued:'Đang chờ',preparing:'Đang chuẩn bị',cancelled:'Đã hủy',expired:'Hết hạn'} as Record<string,string>)[g.state] || g.state}</span></td>
                         <td>{g._count}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              </section><section>
               <h2>Lỗi gần đây</h2>
               <div className="table-wrap" role="region" aria-label="Lỗi gần đây" tabIndex={0}>
                 <table>
@@ -334,6 +368,7 @@ export default function Admin({ session }: { session: Session }) {
                   </tbody>
                 </table>
               </div>
+              </section></div>
               <p className="muted">
                 Byte dự phòng được tính trước mỗi request. Crash giữ dự phòng để tránh đánh giá thấp
                 ngân sách. Không phải số tính phí của nhà cung cấp.
@@ -375,10 +410,12 @@ export default function Admin({ session }: { session: Session }) {
                 ))}
               </div>
               <h2>Giới hạn vận hành</h2>
-              <div className="settings-grid">
-                {Object.entries(numericLabels).map(([key, label]) => (
-                  <label key={key}>
-                    {label}
+              {numericGroups.map((group) => <fieldset className="settings-group" key={group.title}>
+                <legend>{group.title}</legend><p className="muted">{group.note}</p>
+                <div className="settings-grid">
+                {group.keys.map((key) => (
+                  <label key={key} className="settings-field">
+                    <span>{numericLabels[key]}</span>
                     <input
                       type="number"
                       min={0}
@@ -386,10 +423,12 @@ export default function Admin({ session }: { session: Session }) {
                       value={settings[key]}
                       onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })}
                     />
+                    <small>{numericHelp(key, settings[key])}</small>
                   </label>
                 ))}
-              </div>
-              <button className="primary" disabled={!!busy}>Lưu cấu hình</button>
+                </div>
+              </fieldset>)}
+              <div className="settings-save"><p className="muted">Các thay đổi chỉ được áp dụng khi bạn lưu.</p><button className="primary" disabled={!!busy}>Lưu cấu hình</button></div>
             </form>
           )}
           {tab === 'campaigns' && (
@@ -435,11 +474,11 @@ export default function Admin({ session }: { session: Session }) {
                         <tr key={c.id}>
                           <td>{c.title}</td>
                           <td>{c.placement}</td>
-                          <td>{row ? row.impressions : '—'}</td>
+                          <td>{row ? row.impressions : '-'}</td>
                           <td>
-                            {row ? row.clicks : '—'} / {row?.ctrPercent == null ? '—' : row.ctrPercent.toFixed(1) + '%'}
+                            {row ? row.clicks : '-'} / {row?.ctrPercent == null ? '-' : row.ctrPercent.toFixed(1) + '%'}
                           </td>
-                          <td>{c.enabled ? 'Bật' : 'Tắt'}</td>
+                          <td><span className={`campaign-status${c.enabled ? ' enabled' : ''}`}>{c.enabled ? 'Bật' : 'Tắt'}</span></td>
                           <td>
                             <button
                               className="text-btn"
@@ -566,6 +605,7 @@ export default function Admin({ session }: { session: Session }) {
           )}
         </>
       )}
+      </div>
     </main>
   );
 }

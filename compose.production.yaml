@@ -110,6 +110,7 @@ services:
     environment:
       PYTHONDONTWRITEBYTECODE: '1'
       TIKTOK_EGRESS_POLICY_ENABLED: ${TIKTOK_EGRESS_POLICY_ENABLED:-0}
+      TIKTOK_PREVIEW_ENABLED: ${TIKTOK_PREVIEW_ENABLED:-0}
       TIKTOK_EGRESS_CONTROL_SECRET: ${TIKTOK_EGRESS_CONTROL_SECRET:?Set a new 64 lowercase hex control secret}
       TIKTOK_EGRESS_CONTROL_NETWORKS: ${PRODUCTION_PRIVATE_SUBNET:?Choose a nonoverlapping private production CIDR}
       EGRESS_DOMAINS: youtube.com,youtu.be,googlevideo.com,ytimg.com,googleapis.com,tiktok.com,tiktokcdn.com,tiktokv.com,byteoversea.com,ibytedtos.com
@@ -149,6 +150,9 @@ services:
   worker:
     <<: *app
     command: [node, dist/apps/worker/src/main.js]
+    environment:
+      <<: *runtime
+      TIKTOK_PREVIEW_ENABLED: ${TIKTOK_PREVIEW_ENABLED:-0}
     volumes: [media_data:/media]
     mem_limit: 768m
     memswap_limit: 768m

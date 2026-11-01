@@ -5,6 +5,10 @@ node_modules
 **/node_modules
 **/dist
 docs/evidence
+lab-runs
+labs
+design
+apps/web/dev
 backups
 *.dump
 *.log

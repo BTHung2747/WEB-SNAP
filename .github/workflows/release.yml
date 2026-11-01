@@ -97,6 +97,13 @@ jobs:
               test -s /app/infra/media_adapter.py
               test -s /app/apps/media/src/tiktok/LICENSE
               test -s /app/apps/media/src/tiktok/NOTICE.md
+              # Preview uses the reviewed Linux single-thread fork/Pipe API and
+              # FFmpeg raster normalization. Reject build-time package drift;
+              # never silently replace the offline-tested runtime at release.
+              python3 -c '\''import sys,subprocess; from pathlib import Path; sys.path.insert(0,"/app/apps/media/src"); from tiktok.core import versions; versions(); assert sys.version_info[:2]==(3,11); assert Path("/app/apps/media/src/tiktok/preview_cache.py").is_file(); assert Path("/app/apps/media/src/tiktok/shortlink.py").is_file(); [compile(Path(p).read_bytes(),p,"exec") for p in ("/app/apps/media/src/tiktok/preview_cache.py","/app/apps/media/src/tiktok/shortlink.py")]; results=[subprocess.run([tool,"-version"],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=5,check=True).stdout.splitlines()[0].decode("ascii") for tool in ("ffmpeg","ffprobe")]; assert all(line.startswith(tool+" version 5.1.9-") for tool,line in zip(("ffmpeg","ffprobe"),results))'\''
+              test -s dist/apps/api/src/services/preview-cache.js
+              test -s dist/packages/shared/src/tiktok-short.js
+              test ! -e /app/apps/web/dev
               test -s /app/apps/web/dist/index.html
               test -d /app/apps/web/dist/assets
               cd /app/apps/web/dist

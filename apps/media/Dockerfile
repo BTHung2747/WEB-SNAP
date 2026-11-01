@@ -5,6 +5,7 @@ RUN python3 -m venv /opt/media && /opt/media/bin/pip install --no-cache-dir -r /
 ENV PATH="/opt/media/bin:${PATH}"
 WORKDIR /app
 COPY apps/media/src/media_adapter.py /app/infra/media_adapter.py
+COPY apps/media/src/video_policy.py /app/infra/video_policy.py
 COPY apps/media/src/tiktok /app/infra/tiktok
 RUN cd /app/infra/tiktok && npm ci --ignore-scripts --omit=optional --no-audit --no-fund
 ENTRYPOINT ["/usr/bin/tini", "-g", "--"]

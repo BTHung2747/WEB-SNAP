@@ -6,4 +6,5 @@ import './styles/home.css';
 import './styles/layout.css';
 import './styles/legal.css';
 import './styles/responsive.css';
+import './styles/support.css';
 createRoot(document.getElementById('root')!).render(<App />);

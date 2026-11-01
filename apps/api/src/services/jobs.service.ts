@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { open, statfs } from 'node:fs/promises';
-import { pipeline } from 'node:stream/promises';
+import { statfs } from 'node:fs/promises';
 import {
   after,
   assetExpired,
@@ -23,7 +22,9 @@ import { admission, csrf, inputSchema, own, parse, prepareSchema } from '../comm
 import { clientIp } from '../security/client-ip';
 import { ratePolicy } from '../security/rate-policy';
 import { photoPostId, requirePhotoEnabled, selectedPhoto, checkedPhotoFormats } from '../../../../packages/shared/src/tiktok-photo';
-import { videoPostId, requireVideoEnabled } from '../../../../packages/shared/src/tiktok-video';
+import { videoPostId, requireVideoEnabled, selectedVideo } from '../../../../packages/shared/src/tiktok-video';
+import { shortTikTok, requireShortEnabled } from '../../../../packages/shared/src/tiktok-short';
+import { cachedPreview, legacyVideoPreview, previewKeys } from './preview-cache';
 @Injectable()
 export class JobsService {
   async analyze(req: Request, body: any, res: Response) {
@@ -34,6 +35,7 @@ export class JobsService {
     const photoId = photoPostId(url);
     const videoId = videoPostId(url);
     const l = await limits();
+    if (shortTikTok(url)) requireShortEnabled(l.enabledPlatforms);
     if (!l.enabledPlatforms.includes(platform as any)) fail('UNSUPPORTED_PLATFORM');
     if (photoId) requirePhotoEnabled(l.enabledPlatforms);
     if (videoId) requireVideoEnabled(l.enabledPlatforms);
@@ -68,6 +70,7 @@ export class JobsService {
       return current;
     });
     if (!j) fail('JOB_EXPIRED', 410);
+    const cacheKeys = ['failed','cancelled','expired'].includes(j.state) ? new Set<string>() : await previewKeys(j.id);
     return {
       id: j.id,
       state: j.state,
@@ -76,35 +79,34 @@ export class JobsService {
       duration: j.duration,
       metadataAcceptedAt: j.metadataAcceptedAt,
       metadataExpiresAt: j.metadataExpiresAt,
-      items: ['failed', 'cancelled', 'expired'].includes(j.state) ? [] : j.items.map((i) => ({ id: i.id, kind: i.kind, formats: i.kind === 'photo' ? checkedPhotoFormats(i.formats) : i.formats })),
-      previewUrl: j.title && !j.items.some(i => i.kind === 'photo') && !['failed', 'cancelled', 'expired'].includes(j.state) ? `/api/v1/jobs/${j.id}/preview` : null,
+      items: ['failed', 'cancelled', 'expired'].includes(j.state) ? [] : j.items.map((i) => ({ id: i.id, kind: i.kind, formats: i.kind === 'photo' ? checkedPhotoFormats(i.formats).map(f=>({...f,previewUrl:cacheKeys.has(f.id)?`/api/v1/jobs/${j.id}/preview/${f.id}`:null})) : i.formats })),
+      previewUrl: j.title && !j.items.some(i => i.kind === 'photo') && !['failed', 'cancelled', 'expired'].includes(j.state) &&
+        (j.platform!=='tiktok' || cacheKeys.has('video')) ? `/api/v1/jobs/${j.id}/preview` : null,
       mode: 'temporary',
       serverMeaning: 'server_finished không chứng minh tệp đã lưu vào thiết bị',
     };
   }
-  async preview(req: Request, id: string, res: Response) {
+  async preview(req: Request, id: string, res: Response, formatId?: string) {
     await own(req, id);
     const result = await db.$transaction(async (tx) => {
       await lockJob(tx, id);
       const j = await tx.downloadJob.findUniqueOrThrow({ where: { id } });
       if (await expireSelectableMetadata(tx, j) || j.cancelRequested || ['expired', 'cancelled', 'failed'].includes(j.state))
-        return { expired: true, handle: null };
-      // Acquire the handle under the same lock used to mark expiry/deletion.
-      try { return { expired: false, handle: await open(filePath(`${id}/preview`), 'r') }; }
-      catch { return { expired: false, handle: null }; }
+        return { expired: true, image: null };
+      if (formatId) {
+        const items=await tx.mediaItem.findMany({where:{jobId:id}});
+        if (items.length!==1 || items[0].kind!=='photo' || !checkedPhotoFormats(items[0].formats).some(f=>f.id===formatId))
+          return {expired:false,image:null};
+      }
+      try { return { expired:false,image:formatId ? await cachedPreview(id,formatId) :
+        j.platform==='tiktok' ? await cachedPreview(id,'video') : await legacyVideoPreview(id) }; }
+      catch { return {expired:false,image:null}; }
     });
     if (result.expired) fail('JOB_EXPIRED', 410);
-    const handle = result.handle;
-    if (!handle) return res.status(404).end();
-    try {
-      const b = Buffer.alloc(8);
-      await handle.read(b, 0, 8, 0);
-      res.setHeader('Content-Type', b[0] === 0xff ? 'image/jpeg' : 'image/png');
-      res.setHeader('Cache-Control', 'private, no-store');
-      await pipeline(handle.createReadStream({ start: 0 }), res);
-    } finally {
-      await handle.close().catch(() => {});
-    }
+    if (!result.image) return res.status(404).end();
+    res.setHeader('Content-Type',result.image.mime);res.setHeader('Cache-Control','private, no-store');
+    res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Length',result.image.data.length);
+    res.end(result.image.data);
   }
   async prepare(req: Request, id: string, body: any, res: Response) {
     const { s } = await own(req, id, true);
@@ -134,6 +136,7 @@ export class JobsService {
         fail('IDEMPOTENCY_CONFLICT', 409);
       }
       if (j.state !== 'selectable') fail('FORMAT_UNAVAILABLE');
+      if (j.sourceUrl && videoPostId(j.sourceUrl)) selectedVideo(j.items,selected.formatId,videoPostId(j.sourceUrl)!);
       const item = j.items.find((i) => i.id === selected.itemId);
       if (!item || !(item.formats as any[]).some((f) => f.id === selected.formatId))
         fail('FORMAT_UNAVAILABLE');
