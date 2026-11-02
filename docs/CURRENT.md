@@ -4,7 +4,7 @@ Cập nhật: 02/11/2026. Đây là điểm vào ngắn cho agent; lịch sử c
 
 ## Trạng thái sản phẩm đã xác nhận
 
-- **02/11 — Logo/SEO và gate CI đã review; chuẩn bị successor release**: [review hiện hành](tasks/SEO_BRAND_SEARCH_20261102.md#root-review-candidate). Root20sourcepins khớp:18SEO +2CI/helper, nhận PNG/copy cuối và build/artifactPASS đã chạy. CUA artifact tĩnh render/hydrate/tên/mô tả/canonical đúng, no-session khóa công cụ; không API/live-source. NativeCaddy/22HTTPcase phải đạt ở CI trước publish, chưa chạy ở thời điểm này. Chuyển exact commit/push/CI; chưa cập nhật VPS hoặc DNS/SearchConsole, `add52bc1` chưa chứa SEO.
+- **02/11 — Đã nhận sửa header nhánh lỗi Caddy; chuẩn bị CI successor**: [review bản sửa](tasks/SEO_BRAND_SEARCH_20261102.md#root-nhận-caddy-error-fix). CI41372939142/source `df2fe21` trước đó build3/nativeCaddyPASS nhưng HTTPFAIL MISSING_1/CSP404 nên publishSKIPPED/cleanupsuccess. Root nhận đúng1Caddyfile: errorchain đặt lại headers chặt/noindex/bodyfixed, giữ status;19source khác và22case nguyên. Chuyển commit/push/CI successor để kiểm native thật; chưa publish SEO hoặc cập nhật VPS/DNS/SearchConsole. Logo/copy/CUA tĩnh và TikTok đã nghiệm thu giữ kết quả.
 
 - **02/11 — Clip TikTok đạt; target/rollback refs đã rõ, chưa cập nhật**: [xác nhận và target](tasks/TIKTOK_VIDEO_RECOVERY_20261101.md#xác-nhận-người-xem--0211). Chủ xác nhận hình/tiếng và không watermark. Ảnh SSH: source `2ec8034`, checkout sạch, bốn container ứng dụng có full Config.Image/actualImage khớp, còn71G. Đã lưu rollback refs; chuyển preload source `add52bc1` và ba image CI trước maintenance. Chưa nhận kết quả preload, chưa drain/backup/rollout.
 

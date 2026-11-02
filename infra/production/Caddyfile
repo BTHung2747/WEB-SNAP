@@ -103,6 +103,21 @@
         header X-Robots-Tag "noindex, nofollow"
         respond "Không tìm thấy trang" 404
     }
+    # Error routes have their own header chain: deferred normal headers do not
+    # run when file_server/proxy returns an error. Preserve its status explicitly.
+    handle_errors {
+        header {
+            -Server
+            X-Content-Type-Options nosniff
+            Referrer-Policy no-referrer
+            Strict-Transport-Security "max-age=31536000"
+            Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+            X-Robots-Tag "noindex, nofollow"
+            Cache-Control no-store
+            Content-Type "text/plain; charset=utf-8"
+        }
+        respond "Không thể xử lý yêu cầu." {err.status_code}
+    }
 }
 
 # Readiness inside this container only; not published by Compose.
