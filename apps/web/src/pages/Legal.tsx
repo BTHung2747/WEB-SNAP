@@ -1,5 +1,5 @@
 import type { Session } from '../types';
-export default function Legal({ page, session }: { page: string; session: Session }) {
+export default function Legal({ page, session }: { page: string; session: Session | null }) {
   const text: Record<
     string,
     {
@@ -50,7 +50,9 @@ export default function Legal({ page, session }: { page: string; session: Sessio
         ],
         [
           'Kênh liên hệ',
-          session.contact
+          !session
+            ? 'Thông tin liên hệ sẽ hiển thị khi website kết nối được. Không gửi mật khẩu hoặc cookie tài khoản.'
+            : session.contact
             ? `Email chủ website: ${session.contact}`
             : 'Chủ website chưa cấu hình email liên hệ. Phải bổ sung kênh tiếp nhận trước khi mở công khai.',
         ],

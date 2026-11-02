@@ -147,6 +147,32 @@ jobs:
             --name "$CONTAINER_PREFIX-caddy-validate" --entrypoint caddy \
             "$IMAGE_ROOT-web:$RELEASE_TAG" validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
+      - name: Check public and private HTTP routes before publish
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          # Reuse exactly the checked web/app images. No published port, DNS,
+          # ACME, TLS, real API or source service exists in this isolated netns.
+          trap 'docker rm -f "$CONTAINER_PREFIX-routes-client" "$CONTAINER_PREFIX-routes-web" >/dev/null 2>&1 || true' EXIT
+          guard=(--read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --ipc private --pids-limit 64 --cpus 0.5 --memory 128m --memory-swap 128m)
+          timeout --signal=TERM --kill-after=5s 20s docker run --detach --pull never \
+            --name "$CONTAINER_PREFIX-routes-web" --network none "${guard[@]}" \
+            --tmpfs /data:rw,noexec,nosuid,size=16m,uid=1000,gid=1000 \
+            --tmpfs /config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000 \
+            --env PUBLIC_HOST=http://release.example.invalid --env ACME_EMAIL=ci@example.invalid \
+            --entrypoint /bin/sh "$IMAGE_ROOT-web:$RELEASE_TAG" \
+            -ec 'exec timeout -s TERM -k 5 90 caddy run --config /etc/caddy/Caddyfile --adapter caddyfile' \
+            > "$RELEASE_DIR/routes-web-id.txt"
+          timeout --signal=TERM --kill-after=5s 70s docker run --rm --pull never \
+            --name "$CONTAINER_PREFIX-routes-client" --network "container:$CONTAINER_PREFIX-routes-web" "${guard[@]}" \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/scripts/check-release-routes.py,target=/checks/routes.py,readonly" \
+            --entrypoint /usr/bin/timeout "$IMAGE_ROOT-app:$RELEASE_TAG" \
+            --signal=TERM --kill-after=5s 60s python3 -B /checks/routes.py \
+            | tee "$RELEASE_DIR/http-routes.jsonl"
+          docker rm -f "$CONTAINER_PREFIX-routes-web" > /dev/null
+          trap - EXIT
+
       - name: Publish exactly three checked images and record registry digests
         env:
           GHCR_TOKEN: ${{ github.token }}
@@ -182,7 +208,7 @@ jobs:
               printf '| %s | `%s` | `%s` |\n' "$role" "$ref" "$id"
             done < "$RELEASE_DIR/images.tsv"
             echo
-            echo 'Artifact/static/Caddy checks passed. Startup, TLS, migrations, source and P5/P6 NOT_RUN.'
+            echo 'Artifact/static/Caddy/isolated HTTP routes passed. API health returned expected502 without an upstream; this is not API/source acceptance. Live startup, TLS, migrations, source and P5/P6 NOT_RUN.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Clean only this run containers and registry credentials
@@ -191,7 +217,7 @@ jobs:
           set -euo pipefail
           cleanup_status=0
           if [[ -n "${CONTAINER_PREFIX:-}" ]]; then
-            for role in app web egress caddy-version caddy-adapt caddy-validate; do
+            for role in app web egress caddy-version caddy-adapt caddy-validate routes-client routes-web; do
               name="$CONTAINER_PREFIX-$role"
               if ids=$(docker container ls -aq --filter "name=^/$name$"); then
                 if [[ -n "$ids" ]]; then

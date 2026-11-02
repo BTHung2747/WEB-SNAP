@@ -45,6 +45,7 @@
     }
     @api path /api /api/*
     handle @api {
+        header X-Robots-Tag "noindex, nofollow"
         # Only authenticated QR upload needs multipart headroom. API guard still
         # runs before Multer; all other API endpoints retain the64KiB ceiling.
         @supportQRUpload {
@@ -66,11 +67,41 @@
         import api_proxy @supportQRUpload 25s
         import api_proxy @otherAPI 10s
     }
-    handle {
+    # Only real public pages enter the application; missing files never become HTML200.
+    redir /index.html / 308
+    redir /privacy/ /privacy 308
+    redir /terms/ /terms 308
+    redir /report/ /report 308
+    redir /ung-ho/ /ung-ho 308
+    @admin path /admin /admin/*
+    handle @admin {
+        header X-Robots-Tag "noindex, nofollow"
+        root * /srv
+        rewrite * /admin.html
+        file_server
+    }
+    @publicPages path /privacy /terms /report /ung-ho
+    handle @publicPages {
         root * /srv
         encode zstd gzip
-        try_files {path} /index.html
+        rewrite * {path}.html
         file_server
+    }
+    handle / {
+        root * /srv
+        encode zstd gzip
+        rewrite * /index.html
+        file_server
+    }
+    @static path /assets/* /brand/* /favicon.png /apple-touch-icon.png /robots.txt /sitemap.xml
+    handle @static {
+        root * /srv
+        encode zstd gzip
+        file_server
+    }
+    handle {
+        header X-Robots-Tag "noindex, nofollow"
+        respond "Không tìm thấy trang" 404
     }
 }
 

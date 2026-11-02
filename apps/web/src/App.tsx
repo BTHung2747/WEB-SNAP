@@ -5,26 +5,18 @@ import Admin from './pages/Admin';
 import Home from './pages/Home';
 import Legal from './pages/Legal';
 import Support from './pages/Support';
-import { useEffect } from 'react';
-export default function App() {
+import PublicHome from './pages/PublicHome';
+export default function App({ pathname = location.pathname }: { pathname?: string } = {}) {
   const { session, error } = useSession();
-  const page = location.pathname.split('/')[1];
+  const page = pathname.split('/')[1];
   const pageClass = page === 'admin' ? 'app-admin' : page === 'ung-ho' ? 'app-support' : ['privacy', 'terms', 'report'].includes(page) ? 'app-legal' : 'app-home';
-  useEffect(() => {
-    document.title = `${session?.productName || 'WED SNAP'} · Tải nội dung được phép`;
-  }, [session?.productName]);
   return (
     <div className={`app-shell ${pageClass}`}>
       <Header productName={session?.productName} />
-      <div id="main-content" tabIndex={-1}>{page === 'ung-ho' ? <Support /> : session ? (
-        page === 'admin' ? (
-          <Admin session={session} />
-        ) : ['privacy', 'terms', 'report'].includes(page) ? (
-          <Legal page={page} session={session} />
-        ) : (
-          <Home session={session} />
-        )
-      ) : (
+      <div id="main-content" tabIndex={-1}>{page === 'ung-ho' ? <Support /> :
+        ['privacy', 'terms', 'report'].includes(page) ? <Legal page={page} session={session} /> :
+        page === '' ? session ? <Home session={session} /> : <PublicHome error={error} /> :
+        page === 'admin' && session ? <Admin session={session} /> : page === 'admin' ? (
         <main className="loading" role="status">
           {error || 'Đang kết nối phiên…'}
           {error && (
@@ -33,7 +25,7 @@ export default function App() {
             </button>
           )}
         </main>
-      )}</div>
+      ) : <main className="legal"><h1>Không tìm thấy trang</h1><a href="/">Trở về WED SNAP</a></main>}</div>
       <Footer productName={session?.productName} />
     </div>
   );

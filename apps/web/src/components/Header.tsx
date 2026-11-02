@@ -1,6 +1,7 @@
 export default function Header({ productName = 'WED SNAP' }: { productName?: string }) {
   return (
-    <><a className="skip-link" href="#main-content">Bỏ qua đến nội dung</a><header className="nav">
+    <><a className="skip-link" href="#main-content">Bỏ qua đến nội dung</a><header className="nav" itemScope itemType="https://schema.org/WebSite">
+      <meta itemProp="name" content="WED SNAP" /><meta itemProp="alternateName" content="WEDSNAP" /><link itemProp="url" href="https://savlivo.online/" />
       <a href="/" className="brand">
         <span className="brand-icon" aria-hidden="true">w.</span>
         {productName === 'WED SNAP' ? (
