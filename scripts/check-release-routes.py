@@ -15,6 +15,7 @@ CANONICAL = 'https://savlivo.online'
 PUBLIC = ('/', '/privacy', '/terms', '/report', '/ung-ho', '/gop-y')
 MAX_BODY = 256 * 1024
 MAX_TOTAL = 2 * 1024 * 1024
+MAX_REQUESTS = 20 + 28  # Up to20 readiness probes, then28 fixed route cases.
 ERROR_CODES = frozenset(('DEADLINE', 'ENCODING', 'BODY_CAP', 'STATUS', 'CSP', 'MIME',
                         'HTML_IDENTITY', 'ROBOTS_HEADER', 'PNG', 'PNG_DIMENSIONS',
                         'SVG', 'ROBOTS_FILE', 'SITEMAP_URLS', 'LOCATION',
@@ -55,6 +56,12 @@ def require(ok, code):
         raise GateError(code)
 
 
+def validate_sitemap(body):
+    urls = [node.text for node in ET.fromstring(body).iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
+    expected = {CANONICAL + path for path in PUBLIC}
+    require(set(urls) == expected and len(urls) == len(set(urls)) and b'lastmod' not in body, 'SITEMAP_URLS')
+
+
 def run():
     admin_path = os.environ.get('ADMIN_PATH', '')
     if not re.fullmatch(r'/[a-z][a-z0-9-]{19,63}', admin_path) or re.match(r'/(admin|api|assets|brand|privacy|terms|report|ung-ho|gop-y)(-|$)', admin_path):
@@ -70,7 +77,7 @@ def run():
         nonlocal total, http_requests, observed_status
         observed_status = None
         http_requests += 1
-        require(http_requests <= 42, 'DEADLINE')  # <=20 readiness +22 fixed cases.
+        require(http_requests <= MAX_REQUESTS, 'DEADLINE')
         left = deadline - time.monotonic()
         require(left > 0, 'DEADLINE')
         connection = http.client.HTTPConnection('127.0.0.1', port, timeout=min(5, left))
@@ -114,8 +121,7 @@ def run():
             require(mime == 'text/plain' and b'Sitemap: https://savlivo.online/sitemap.xml' in body, 'ROBOTS_FILE')
         elif kind == 'SITEMAP':
             require(mime in ('application/xml', 'text/xml'), 'MIME')
-            urls = [node.text for node in ET.fromstring(body).iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
-            require(urls == [CANONICAL + path for path in PUBLIC] and b'lastmod' not in body, 'SITEMAP_URLS')
+            validate_sitemap(body)
         elif kind == 'REDIRECT':
             require(urljoin('http://' + HOST + path, headers.get('Location', '')) == 'http://' + HOST + value, 'LOCATION')
         elif kind == 'API_UNAVAILABLE':

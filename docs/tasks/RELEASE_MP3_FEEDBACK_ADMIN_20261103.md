@@ -20,4 +20,6 @@ YouTube Shorts 1fSmoMPWXs4 có báo AUTH_REQUIRED ở VPS cũ, local analyze47s 
 
 ## Trạng thái
 
-03/11: bắt đầu chốt candidate và chuẩn bị release. Chưa commit/push/workflow/deploy trong task này. Baseline production gần nhất ad3429a; phải đọc host lại trước cập nhật. Private path giữ ở ignored owner-route và env server, không ghi literal vào task.
+03/11: commit/push `7b57165051d67093120d22a4949f1cb11bb7836a`, đúng58source/config/test đã review +7rootdocs; kiểm pins/private route/credential pattern/diff đạt. [CI41562998831](https://github.com/BTHung2747/WEB-SNAP/actions/runs/41562998831) build3image/static/nativeCaddy đạt, HTTP dừng SITEMAP_URLS vì `publicPages` đặt góp ý đầu trong khi checker đòi thứ tự khác. Đủ sáu URL và public/private/old-admin trước đó đúng; publish skipped, cleanup success, VPS nguyên.
+
+Nhận [delta checker](../../lab-runs/release-sitemap-gate-fix-20261103/HANDOFF.md): chỉ kiểm đúng tậpURL+khôngduplicate/lastmod; cap48 tương ứng20readiness+28fixedcases hiện có. Không đổi sitemap/UI/runtime/deadline/bodycap. Pure5ca reordered/thiếu/thừa/trùng/lastmod actual0; root đọc diff/pin, không chạy lặp. Chạy successor release sau commit bản sửa. Baseline production gần nhất ad3429a; phải đọc host lại trước cập nhật. Private path giữ ở ignored owner-route và env server, không ghi literal vào task.

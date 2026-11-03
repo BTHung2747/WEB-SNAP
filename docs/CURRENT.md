@@ -4,7 +4,7 @@ Cập nhật: 03/11/2026. Đây là điểm vào ngắn cho agent; lịch sử c
 
 ## Trạng thái sản phẩm đã xác nhận
 
-- **03/11 — Chủ đã duyệt deploy gói mới**: [task phát hành](tasks/RELEASE_MP3_FEEDBACK_ADMIN_20261103.md). Root chốt explicit candidate/Git/CI rồi rollout Lightsail bằng terminal AWS đã chọn; code tay to hoàn thiện copy MP3 và gate entrypoint hẹp. Tái dùng nghiệm thu local, còn native Caddy/image/HTTP gate trước publish và migration Feedback trước API mới. Chưa commit/CI/rollout tại mốc này. Lỗi YouTube VPS cũ vẫn known issue, không coi deploy mới tự sửa; không mở lại nguồn/test đã khép.
+- **03/11 — Gói mới đã lên Git, CI đang chốt trước rollout**: [task phát hành](tasks/RELEASE_MP3_FEEDBACK_ADMIN_20261103.md). Commit7b57165 gồm65file explicit; CI41562998831 build3image/static/nativeCaddy đạt, HTTP dừng ở sitemap đủ URL nhưng khác thứ tự, chưa publish. Nhận sửa đúng checker bằng set+không trùng, pure5ca đạt; phát hành successor. Chưa đổi VPS; cần migration Feedback/ADMIN_PATH và smoke HTTPS qua terminal AWS đã chọn. Lỗi YouTube VPS cũ vẫn known issue, không kiểm lại nguồn đã khép.
 
 - **03/11 — Đường quản trị riêng đã nghiệm thu local**: [review](../lab-runs/admin-entry-route-20261103/ROOT_REVIEW.md), [task](tasks/PRIVATE_ADMIN_ENTRY_20261103.md). ADMIN_PATH runtime/HTML marker, public bundle/sitemap/robots không nhúng giá trị thật; old `/admin`/file/child404 không redirect. Root kiểm14source/16artifact pins và mở CUA login mới; focused policy/SSR/build/Vite11routes đạt, API/auth/CSRF giữ. Preview5219 chỉ thay web, giữ API/PG/Redis/thư chủ; TTL08:24:50VN03/11. Production chưa đổi; native Caddy/image release gate còn thiếu. Giá trị path chỉ ở owner-route/env riêng, không Git.
 
