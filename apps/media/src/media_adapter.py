@@ -23,6 +23,46 @@ sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media
 from video_policy import full_hd
 from audio_media import choice as audio_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError, INPUT_CAP as AUDIO_INPUT, OUTPUT_CAP as AUDIO_OUTPUT
 class Rejected(Exception):pass
+def youtube_message_reason(error):
+    """Recognize the pinned extractor's sign-in branch, never infer bot/IP state."""
+    from yt_dlp.utils import ExtractorError
+    import re
+    if type(error) is not ExtractorError or error.expected is not True:return 'UNKNOWN'
+    text=error.orig_msg
+    if type(text) is not str or len(text)>4096:return 'UNKNOWN'
+    # _video.py appends _base.py's login hint; common.py supplies its first part.
+    # Require that exact construction, not free-form exception keywords.
+    hint=('Use --cookies-from-browser or --cookies for the authentication. '
+          'See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. '
+          'Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies')
+    suffix='. '+hint
+    if not text.endswith(suffix):return 'UNKNOWN'
+    source=text[:-len(suffix)]
+    if not re.search(r'\bsign in\b',source,re.I):return 'UNKNOWN'
+    return 'SOURCE_AGE_MESSAGE' if re.search(r'\bconfirm your age\b',source,re.I) else 'SOURCE_SIGN_IN_MESSAGE'
+def youtube_diagnostic(folder, phase, gate, reason, error):
+    """One private numeric/enum receipt. Never serialize exception text or metadata."""
+    try:
+        from yt_dlp.utils import DownloadError,ExtractorError,GeoRestrictedError,UnavailableVideoError
+        import uuid,stat
+        root=pathlib.Path(os.environ.get('MEDIA_ROOT','/media'))
+        if phase not in ('analyze','prepare') or folder.parent!=root or root.is_symlink() or folder.is_symlink() or str(uuid.UUID(folder.name))!=folder.name:return
+        classes={DownloadError:'DownloadError',ExtractorError:'ExtractorError',GeoRestrictedError:'GeoRestrictedError',UnavailableVideoError:'UnavailableVideoError',Rejected:'Rejected',AudioError:'AudioError'}
+        outer=classes.get(type(error),'UNKNOWN');inner=error
+        for _ in range(2):
+            if type(inner) is DownloadError and type(inner.exc_info) is tuple and len(inner.exc_info)==3 and isinstance(inner.exc_info[1],Exception):inner=inner.exc_info[1]
+            else:break
+        if type(inner) is GeoRestrictedError and reason=='UNKNOWN':reason='GEO_RESTRICTED'
+        elif reason=='UNKNOWN':reason=youtube_message_reason(inner)
+        row=dict(version=1,phase=phase,gate=gate,reason=reason,exceptionClass=outer,causeClass=classes.get(type(inner),'UNKNOWN'))
+        data=json.dumps(row,separators=(',',':'),allow_nan=False).encode()
+        if len(data)>1024:return
+        dfd=os.open(folder,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+        try:
+            fd=os.open('youtube-diagnostic.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=dfd)
+            with os.fdopen(fd,'wb') as stream:stream.write(data)
+        finally:os.close(dfd)
+    except Exception:pass # Failure cannot alter original error packet, exit, or cleanup.
 phase,url,folder=sys.argv[1:4]
 folder=pathlib.Path(folder);folder.mkdir(parents=True,exist_ok=True)
 max_input=int(os.environ.get('ADAPTER_MAX_INPUT','262144000'))
@@ -61,11 +101,19 @@ def hook(d):
     if total>max_input+max_output:raise Rejected('LIMIT_EXCEEDED')
 opts={'proxy':os.environ.get('MEDIA_PROXY','http://egress:8888'),'quiet':True,'noprogress':True,'no_warnings':True,'noplaylist':True,'cachedir':False,'socket_timeout':10,'retries':1,'fragment_retries':1,'extractor_retries':0,'js_runtimes':{'node':{}},'remote_components':[], 'max_filesize':max_input,'progress_hooks':[hook], 'concurrent_fragment_downloads':1,'hls_prefer_native':True,'external_downloader':{'default':'native'},'outtmpl':str(folder/'media.%(ext)s'),'merge_output_format':'mp4','overwrites':False}
 if phase=='prepare':opts['format']='best' if audio_requested else sys.argv[4]
+diagnostic_gate='EXTRACTOR';diagnostic_reason='UNKNOWN'
 def valid(info):
+    global diagnostic_gate,diagnostic_reason
+    diagnostic_gate='METADATA';diagnostic_reason='UNKNOWN'
     if info.get('_type') in ('playlist','multi_video') or info.get('is_live') or info.get('live_status') in ('is_live','is_upcoming'):raise Rejected('UNSUPPORTED_CONTENT')
-    if info.get('availability') in ('private','premium_only','subscriber_only','needs_auth'):raise Rejected('AUTH_REQUIRED')
+    if info.get('availability') in ('private','premium_only','subscriber_only','needs_auth'):
+        diagnostic_gate='METADATA_AUTH';diagnostic_reason={'private':'PRIVATE','premium_only':'PREMIUM_ONLY','subscriber_only':'SUBSCRIBER_ONLY','needs_auth':'NEEDS_AUTH'}[info['availability']]
+        raise Rejected('AUTH_REQUIRED')
     if not isinstance(info.get('duration'),(int,float)) or not math.isfinite(info['duration']) or info['duration']>duration_limit:raise Rejected('LIMIT_EXCEEDED')
-    if info.get('age_limit',0)>0:raise Rejected('AUTH_REQUIRED')
+    if info.get('age_limit',0)>0:
+        diagnostic_gate='METADATA_AGE';diagnostic_reason='AGE_RESTRICTED'
+        raise Rejected('AUTH_REQUIRED')
+    diagnostic_gate='PROCESSING'
 def formats(info):
     fs=info.get('formats',[]);rows=[]
     for f in fs:
@@ -148,6 +196,8 @@ try:
             if not math.isfinite(probed_duration) or probed_duration>duration_limit:raise Rejected('LIMIT_EXCEEDED')
             print(json.dumps({'file':'media.mp4','size':files[0].stat().st_size,'inputBytes':network_bytes}))
 except Exception as e:
+    try:youtube_diagnostic(folder,phase,diagnostic_gate,diagnostic_reason,e)
+    except Exception:pass
     message=str(e).lower()
     code=str(e) if isinstance(e,(Rejected,AudioError)) and str(e) in ('AUTH_REQUIRED','FORMAT_UNAVAILABLE','SOURCE_TIMEOUT','LIMIT_EXCEEDED','CONTENT_UNAVAILABLE','INVALID_ASSET_PATH') else ('AUTH_REQUIRED' if any(s in message for s in ['sign in','login','log in','private']) else 'FORMAT_UNAVAILABLE' if 'requested format is not available' in message else 'SOURCE_TIMEOUT' if 'timed out' in message else 'LIMIT_EXCEEDED' if 'filesize' in message else 'CONTENT_UNAVAILABLE')
     # Do not print extractor exception: it can contain a signed URL or headers.

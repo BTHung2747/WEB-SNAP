@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { mkdir, readdir, stat, lstat, unlink, link } from 'node:fs/promises';
-import { after, AppError, db, filePath, ownerExpired } from '../../../packages/shared/src/core';
+import { after, AppError, db, filePath, ownerExpired, mediaRoot } from '../../../packages/shared/src/core';
+import { mirrorSourceDiagnostics } from './source-diagnostics';
 import { diskAvailable } from './lifecycle';
 import { liveProcesses } from './process-registry';
 import { ProcessGroup, ProcessGroupUnconfirmed } from './process-group';
@@ -227,6 +228,9 @@ export async function runAdapter(
       }
       if (settled) return;
       groupStopped = true;
+      // Read receipts before packet rejection and before discard/processor cleanup.
+      // Logging failure cannot change native outcome, proof acceptance, or lifecycle.
+      try {await mirrorSourceDiagnostics(mediaRoot,id,phase,photo||video||short?'preview':'youtube');} catch {}
       try {
         if (stopped) throw new AppError(reason);
         const data = JSON.parse(output.trim().split('\n').at(-1)!);
