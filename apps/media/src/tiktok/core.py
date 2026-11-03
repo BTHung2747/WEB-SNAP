@@ -21,7 +21,7 @@ class Silent:
     def error(self,*a,**k):pass
 
 def versions():
-    expected={'yt-dlp':'2026.8.19','requests':'2.34.2','urllib3':'2.8.0','brotli':'1.2.0'}
+    expected={'yt-dlp':'2026.10.26','requests':'2.34.2','urllib3':'2.8.0','brotli':'1.2.1'}
     for name,version in expected.items():
         if md.version(name)!=version:raise RuntimeError('VERSION_MISMATCH')
     module=pathlib.Path(md.distribution('yt-dlp').locate_file('yt_dlp/extractor/tiktok.py'))

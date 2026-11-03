@@ -5,7 +5,6 @@ The parent grants a separate counted capability and accepts its closure proof
 before publishing previews.json. A failed optional batch cannot poison metadata.
 """
 import hashlib
-import imghdr
 import json
 import math
 import multiprocessing
@@ -92,16 +91,22 @@ def normalized(path, end, cap=SOURCE_CAP):
     # URL, playlist, SVG or HTML to FFmpeg. This is also used on original JPEGs
     # at prepare; no second source GET and no comparison of lossy thumbnails.
     source = read_regular(path, cap)
-    if imghdr.what(None, source) not in ('jpeg', 'png', 'webp'): raise ValueError('PREVIEW_TYPE')
+    # FFmpeg's image demuxers recognize legal JPEG APP marker ordering that
+    # Python 3.11's 32-byte imghdr sniff misses. Restrict the demuxers too:
+    # an allowed raster codec inside a video container is not an image input.
+    formats = {'jpeg_pipe': 'mjpeg', 'png_pipe': 'png', 'webp_pipe': 'webp'}
     p = json.loads(native(['ffprobe', '-v', 'error', '-max_alloc', '67108864', '-protocol_whitelist', 'pipe',
-        '-show_entries', 'stream=codec_type,codec_name,width,height', '-of', 'json', '-i', 'pipe:0'], end, source))
+        '-format_whitelist', ','.join(formats), '-show_entries', 'format=format_name:stream=codec_type,codec_name,width,height',
+        '-of', 'json', '-i', 'pipe:0'], end, source))
+    format_name = p.get('format', {}).get('format_name')
+    if format_name not in formats: raise ValueError('PREVIEW_TYPE')
     streams = p.get('streams', [])
     if len(streams) != 1: raise ValueError('PREVIEW_STREAMS')
     s = streams[0]; w = s.get('width'); h = s.get('height')
-    if s.get('codec_type') != 'video' or s.get('codec_name') not in ('mjpeg', 'png', 'webp') or type(w) is not int or type(h) is not int or not 0 < w <= 8192 or not 0 < h <= 8192 or w*h > 16000000:
+    if s.get('codec_type') != 'video' or s.get('codec_name') != formats[format_name] or type(w) is not int or type(h) is not int or not 0 < w <= 8192 or not 0 < h <= 8192 or w*h > 16000000:
         raise ValueError('PREVIEW_PIXELS')
     raw = native(['ffmpeg', '-v', 'error', '-nostdin', '-max_alloc', '67108864', '-threads', '1',
-        '-protocol_whitelist', 'pipe', '-i', 'pipe:0', '-filter_threads', '1',
+        '-protocol_whitelist', 'pipe', '-format_whitelist', ','.join(formats), '-f', format_name, '-i', 'pipe:0', '-filter_threads', '1',
         '-vf', f'scale={SIDE}:{SIDE}:force_original_aspect_ratio=decrease,pad={SIDE}:{SIDE}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=rgb24',
         '-frames:v', '1', '-threads', '1', '-f', 'rawvideo', 'pipe:1'], end, source)
     if len(raw) != SIDE*SIDE*3: raise ValueError('PREVIEW_DECODE')
