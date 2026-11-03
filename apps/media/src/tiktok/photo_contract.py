@@ -16,7 +16,7 @@ CODES = frozenset({
     'INVALID_ASSET_PATH', 'PREEXISTING_OUTPUT', 'OUTPUT_COLLISION',
     'JPEG_REQUIRED', 'STATIC_IMAGE_REQUIRED', 'DIMENSION_MISMATCH',
     'LIMIT_EXCEEDED', 'SOURCE_TIMEOUT', 'CONTENT_UNAVAILABLE', 'CANCELLED',
-    'CLEANUP_FAILED',
+    'CLEANUP_FAILED', 'FORMAT_UNAVAILABLE',
 })
 
 
@@ -46,7 +46,7 @@ def key(value):
 
 def summary(private, expected):
     require(type(expected) is str and ID.fullmatch(expected), 'PHOTO_METADATA')
-    require(type(private) is dict and set(private) == {'id', 'type', 'images'}
+    require(type(private) is dict and set(private) in ({'id', 'type', 'images'},{'id', 'type', 'images','caption','audio'})
             and private['id'] == expected and private['type'] == 'photo', 'PHOTO_METADATA')
     images = private['images']
     require(type(images) is list and 1 <= len(images) <= 50, 'PHOTO_METADATA')
@@ -96,9 +96,11 @@ def select(meta, selected):
     return dict(meta['images'][index - 1])
 
 
-def public_metadata(meta):
+def public_metadata(meta, caption=None):
     validate_summary(meta, meta.get('id') if type(meta) is dict else None)
     formats = [dict(id=format_id(meta, row['index']), label=f"Ảnh {row['index']}/{meta['imageCount']}",
                     size=None, kind='photo', contentId=meta['id'], imageCount=meta['imageCount'],
                     mime='image/jpeg', snapshotKey=meta['snapshotKey'], **row) for row in meta['images']]
-    return dict(kind='photo', title='Album TikTok', duration=None, summary=meta, formats=formats)
+    title=re.sub(r'https?://\S+','[url-redacted]',caption) if type(caption) is str else ''
+    title=re.sub(r'[\x00-\x1f\x7f]',' ',title).strip()[:300]
+    return dict(kind='photo', title=title or ('Ảnh TikTok' if meta['imageCount']==1 else 'Bài ảnh TikTok'), duration=None, summary=meta, formats=formats)

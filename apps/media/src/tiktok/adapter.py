@@ -4,6 +4,7 @@ from .core import Budget,GuardedYDL,allowed_formats,versions
 from .candidate_file import inspect_file,video_codec,copy_pair
 from .video_selection import selections
 from .prepare_operations import Operations
+from audio_media import choice as audio_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError, INPUT_CAP as AUDIO_INPUT, OUTPUT_CAP as AUDIO_OUTPUT
 
 class Rejected(Exception):pass
 def bound(name,default,maximum):
@@ -39,6 +40,7 @@ def public_id(info,f):
     return 'tt1_'+f['format_id']+'_'+digest
 def error_code(error,budget=None):
     if isinstance(error,Rejected):return error.args[0]
+    if isinstance(error,AudioError):return error.args[0] if error.args and error.args[0] in ('FORMAT_UNAVAILABLE','LIMIT_EXCEEDED','SOURCE_TIMEOUT','INVALID_ASSET_PATH') else 'FORMAT_UNAVAILABLE'
     if budget and budget.failure:
         return 'SOURCE_TIMEOUT' if budget.failure in ('DEADLINE','SOURCE_TIMEOUT') else 'LIMIT_EXCEEDED' if budget.failure in ('BYTE_LIMIT','OUTPUT_LIMIT') else 'CONTENT_UNAVAILABLE'
     if type(error) is subprocess.TimeoutExpired:return 'SOURCE_TIMEOUT'
@@ -46,7 +48,7 @@ def error_code(error,budget=None):
         code=error.args[0]
         if code in ('PREPARE_DEADLINE',):return 'SOURCE_TIMEOUT'
         if code in ('DURATION_POLICY','FILE_LIMIT_OR_MISSING','METADATA_DURATION_POLICY'):return 'LIMIT_EXCEEDED'
-        if code in ('NO_ALLOWED_PLAY_FORMAT','MP4_CONTAINER_REQUIRED','H264_AUDIO_REQUIRED','HEVC_AUDIO_REQUIRED',
+        if code in ('ENCODE_FAIL','NO_ALLOWED_PLAY_FORMAT','MP4_CONTAINER_REQUIRED','H264_AUDIO_REQUIRED','HEVC_AUDIO_REQUIRED',
                     'VIDEO_CODEC_POLICY','VIDEO_DIMENSION_POLICY','TIMELINE_MISMATCH','MUX_FAIL','STREAM_HASH_FAIL','STREAM_COPY_MISMATCH','AUDIO_CODEC_MISMATCH','FILE_METADATA_DURATION_MISMATCH','FFPROBE_FAIL','DECODE_FAIL'):return 'FORMAT_UNAVAILABLE'
     return 'CONTENT_UNAVAILABLE'
 
@@ -56,6 +58,8 @@ def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadli
     max_input=bound('ADAPTER_MAX_INPUT',262144000,262144000)
     max_output=bound('ADAPTER_MAX_OUTPUT',209715200,209715200)
     max_duration=bound('ADAPTER_MAX_DURATION',600,600)
+    audio_requested=phase=='prepare' and type(selected) is str and AUDIO_ID.fullmatch(selected)
+    if audio_requested:max_input=min(max_input,AUDIO_INPUT);max_output=min(max_output,AUDIO_OUTPUT)
     analyze_seconds=bound('ADAPTER_ANALYZE_TIMEOUT',30,30)
     total_seconds=analyze_seconds if phase=='analyze' else bound('ADAPTER_PREPARE_TIMEOUT',180,180)
     deadline=time.monotonic()+total_seconds
@@ -89,10 +93,12 @@ def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadli
         if validation.returncode:
             raise Rejected(checked.get('error') if checked.get('error') in ('AUTH_REQUIRED','UNSUPPORTED_CONTENT','CONTENT_UNAVAILABLE') else 'CONTENT_UNAVAILABLE')
         if checked.get('id')!=expected or abs(duration-checked['duration'])>1:raise Rejected('CONTENT_UNAVAILABLE')
-        rows,mapping=selections(info,expected,min(max_output,max_input),checked.get('defaultUrlSHA256'))
+        rows,mapping=selections(info,expected,max_input if audio_requested else min(max_output,max_input),checked.get('defaultUrlSHA256'))
+        safe_audio_sources=[source for source,donor in mapping.values() if source.get('acodec') not in (None,'none')]
+        audio_format,audio_source=audio_choice(safe_audio_sources,'tiktok',expected,duration)
         if phase=='analyze':
             title=re.sub(r'https?://\S+','[url-redacted]',str(info.get('title') or 'Video'))[:300]
-            result={'title':title,'duration':duration,'formats':rows}
+            result={'title':title,'duration':duration,'formats':rows+([audio_format] if audio_format else [])}
             ydl.close();ydl=None;budget.check()
             from .preview_cache import generate
             posters=info.get('thumbnails') or []
@@ -101,6 +107,26 @@ def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadli
             budget.check()
             return result
         # Fresh extraction in this new child, independent of analyze cookie/URL/session.
+        if audio_requested:
+            if not audio_format or selected!=audio_format['id']:raise Rejected('FORMAT_UNAVAILABLE')
+            source_path=folder/('audio-source.'+audio_source['ext'])
+            auxiliary=[folder/(source_path.name+suffix) for suffix in ('','.part','.ytdl')]
+            if any(os.path.lexists(p) for p in auxiliary):raise Rejected('INVALID_ASSET_PATH')
+            try:
+                budget.prepare();budget.output_cap=budget.input_cap
+                ydl.params['max_filesize']=budget.input_cap;ydl.allowed_url=audio_source['url'];ydl.media_urls={audio_source['url']}
+                ydl.params['outtmpl']['default']=str(source_path)
+                def audio_guard(_):
+                    budget.check()
+                    if sum(p.stat().st_size for p in auxiliary if p.is_file())>budget.input_cap:budget.fail('OUTPUT_LIMIT')
+                ydl.add_progress_hook(audio_guard)
+                fresh=copy.deepcopy(info);fresh['formats']=[copy.deepcopy(audio_source)]
+                ydl.process_ie_result(fresh,download=True);budget.check();audio_guard(None)
+                ydl.close();ydl=None;budget.check()
+                return encode_audio(source_path,folder,audio_format,budget.network_total,deadline,max_output=max_output,check=budget.check)
+            finally:
+                for path in auxiliary:
+                    if path.is_file() and not path.is_symlink():path.unlink()
         if selected not in {r['id'] for r in rows}:raise Rejected('FORMAT_UNAVAILABLE')
         if existing:raise Rejected('INVALID_ASSET_PATH')
         format,donor=mapping[selected]

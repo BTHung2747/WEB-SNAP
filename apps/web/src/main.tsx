@@ -7,7 +7,9 @@ import './styles/layout.css';
 import './styles/legal.css';
 import './styles/responsive.css';
 import './styles/support.css';
+import './styles/feedback.css';
 const root = document.getElementById('root')!;
 // Production has build-time public markup; dev still starts with an empty root.
-if (root.hasChildNodes()) hydrateRoot(root, <App />);
-else createRoot(root).render(<App />);
+const adminEntry = document.querySelector('meta[name="wed-snap-page"]')?.getAttribute('content') === 'admin';
+if (root.hasChildNodes()) hydrateRoot(root, <App adminEntry={adminEntry} />);
+else createRoot(root).render(<App adminEntry={adminEntry} />);

@@ -10,7 +10,7 @@ export type Format = {
   id: string;
   label: string;
   size: number | null;
-  kind?: 'photo';
+  kind?: 'photo' | 'video' | 'audio';
   imageCount?: number;
   index?: number;
   width?: number;

@@ -25,6 +25,43 @@ SOURCE_CAP = 512 * 1024
 TOTAL_CAP = 8 * 1024 * 1024
 JPEG_CAP = 128 * 1024
 SIDE = 320
+DIAGNOSTIC_CODES = frozenset(('PREVIEW_DEADLINE', 'PREVIEW_SIZE', 'PREVIEW_TYPE', 'PREVIEW_STREAMS',
+    'PREVIEW_PIXELS', 'PREVIEW_DECODE', 'PREVIEW_NATIVE', 'PREVIEW_INDEX', 'PREVIEW_THREADS',
+    'PREVIEW_WORKER', 'PREVIEW_FETCH', 'PREVIEW_REAP'))
+
+
+def diagnostic_code(error):
+    # Inspect only owned enum arguments/types/errno, never exception text/argv.
+    if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str and error.args[0] in DIAGNOSTIC_CODES:
+        return error.args[0]
+    if isinstance(error, subprocess.TimeoutExpired): return 'SUBPROCESS_TIMEOUT'
+    if isinstance(error, json.JSONDecodeError): return 'JSON_INVALID'
+    if isinstance(error, OSError): return {2:'ENOENT', 13:'EACCES', 17:'EEXIST', 40:'ELOOP', 1:'EPERM', 5:'EIO'}.get(error.errno, 'OS_ERROR')
+    return 'UNKNOWN'
+
+
+def write_diagnostic(folder, row):
+    """One bounded private receipt. Never overwrite/follow/remove foreign files."""
+    path = folder/'preview-diagnostic.json'; identity = None; fd = None
+    try:
+        data = json.dumps(row, separators=(',', ':'), allow_nan=False).encode()
+        if len(data) > 1024: return False
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        st = os.fstat(fd); identity = (st.st_dev, st.st_ino)
+        with os.fdopen(fd, 'wb') as stream:
+            fd = None
+            if stream.write(data) != len(data): raise OSError(5, 'diagnostic write incomplete')
+        return True
+    except Exception:
+        if fd is not None:
+            try: os.close(fd)
+            except OSError: pass
+        if identity is not None:
+            try:
+                st = path.lstat()
+                if stat.S_ISREG(st.st_mode) and (st.st_dev, st.st_ino) == identity: path.unlink()
+            except OSError: pass
+        return False
 
 
 def remaining(end):
@@ -187,34 +224,53 @@ def generate(folder, candidates, deadline, *, grant=capability, session_factory=
     """
     if os.environ.get('WED_PREVIEW_REQUEST') != '1': return
     owned = OwnedCache(folder); rows = []
+    started = time.monotonic(); end = deadline; stage = 'CANDIDATES'
+    count = disk = total = last_source = 0
+    def report(outcome, code):
+        try:
+            write_diagnostic(folder, dict(version=1, outcome=outcome, stage=stage, code=code,
+                count=count, completedCount=len(rows), sourceBytes=total, lastSourceBytes=last_source,
+                outputBytes=disk, remainingSeconds=round(max(-30, min(30, end-time.monotonic())), 6),
+                elapsedSeconds=round(max(0, min(30, time.monotonic()-started)), 6)))
+        except Exception: pass  # Logging must not change metadata or block owned cleanup.
     try:
         chosen = list(candidates)[:50]
-        if not chosen or len({k for k, _ in chosen}) != len(chosen) or any(not KEY.fullmatch(k) for k, _ in chosen): return
+        count = len(chosen)
+        if not chosen or len({k for k, _ in chosen}) != len(chosen) or any(not KEY.fullmatch(k) for k, _ in chosen):
+            report('SKIPPED', 'INVALID_CANDIDATES'); return
+        stage = 'GRANT'
         granted = grant(len(chosen), deadline)
-        if granted is None: return
+        if granted is None:
+            report('SKIPPED', 'NO_GRANT'); return
         creds, parent_end = granted
         end = min(deadline - 2, parent_end - 2, time.monotonic() + 6)
         remaining(end)
-        disk = total = 0
         for key, url in chosen:
+            stage = 'FETCH'; last_source = 0
             remaining(end)
             source = fetch(url, creds, end, TOTAL_CAP-total, folder, session_factory)
-            total += len(source)
+            last_source = len(source); total += last_source
+            stage = 'INPUT_WRITE'
             temp = owned.put('preview-input.part', source)
+            stage = 'NORMALIZE'
             try: raw = normalized(temp, end)
             finally: owned.remove(temp)
+            stage = 'JPEG'
             data = jpeg(raw, end); disk += len(data)
             if disk > TOTAL_CAP: raise ValueError('PREVIEW_SIZE')
+            stage = 'IMAGE_WRITE'
             owned.put('preview-' + key + '.jpg', data)
             row = dict(key=key, mime='image/jpeg', width=SIDE, height=SIDE, bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
             if key != 'video': row['normalizedSha256'] = hashlib.sha256(raw).hexdigest()
             rows.append(row)
-        remaining(end)
+        stage = 'INDEX'; remaining(end)
         # A candidate index is NOT API-visible until the parent takes proof.
         data = json.dumps(dict(version=1, entries=rows), separators=(',', ':')).encode()
         if len(data) > 24576: raise ValueError('PREVIEW_INDEX')
         owned.put('previews.pending.json', data)
-    except Exception:
+        report('PENDING', 'OK')  # Native decode/index only; parent still owns proof/publication.
+    except Exception as error:
+        report('FAIL', diagnostic_code(error))
         owned.cleanup()  # Optional failure: no public exception/secret/log.
 
 

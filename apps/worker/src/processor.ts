@@ -18,6 +18,7 @@ import { diskAvailable } from './lifecycle';
 import { photoPostId, photoLimits, requirePhotoEnabled, checkedPhotoMetadata, checkedPhotoFile, selectedPhoto } from '../../../packages/shared/src/tiktok-photo';
 import { videoPostId, videoLimits, requireVideoEnabled, selectedVideo, checkedVideoFormats } from '../../../packages/shared/src/tiktok-video';
 import { shortTikTok, requireShortEnabled, checkedResolved } from '../../../packages/shared/src/tiktok-short';
+import { isAudioId, audioLimits, selectedAudio, checkedAudioFormats, primaryFormats, checkedAudioFile } from '../../../packages/shared/src/audio';
 export async function processJob(queued: any) {
   const id = queued.data.id;
   const phase = queued.name;
@@ -63,11 +64,13 @@ export async function processJob(queued: any) {
     }
     if (phase === 'prepare') {
       try {
+        const audio=isAudioId(current.formatId);
+        if(audio){selectedAudio(current.items,current.formatId!,current.platform,photoPostId(current.sourceUrl!)||videoPostId(current.sourceUrl!)||undefined);l=audioLimits(l);}
         if (photo !== (current.items.length === 1 && current.items[0].kind === 'photo')) throw new AppError('FORMAT_UNAVAILABLE');
-        if (photo) selectedPhoto(current.items, current.formatId || '', photoPostId(current.sourceUrl!)!);
-        if (current.sourceUrl && videoPostId(current.sourceUrl)) selectedVideo(current.items,current.formatId || '',videoPostId(current.sourceUrl)!);
+        if (photo&&!audio) selectedPhoto(current.items, current.formatId || '', photoPostId(current.sourceUrl!)!);
+        if (!audio&&current.sourceUrl && videoPostId(current.sourceUrl)) selectedVideo(current.items,current.formatId || '',videoPostId(current.sourceUrl)!);
         const prior = await tx.temporaryAsset.findUnique({ where: { jobId: id } });
-        if (prior && (prior.state !== 'staging' || prior.path !== `${id}/${photo ? 'image.jpg' : 'media.mp4'}`)) throw new AppError('INVALID_ASSET_PATH');
+        if (prior && (prior.state !== 'staging' || prior.path !== `${id}/${audio?'media.mp3':photo ? 'image.jpg' : 'media.mp4'}`)) throw new AppError('INVALID_ASSET_PATH');
       } catch (error) {
         await tx.downloadJob.update({ where: { id }, data: { state: 'failed', errorCode: error instanceof AppError ? error.code : 'FORMAT_UNAVAILABLE', sourceUrl: null } });
         return null;
@@ -84,7 +87,7 @@ export async function processJob(queued: any) {
     if (phase === 'prepare')
       await tx.temporaryAsset.upsert({
         where: { jobId: id },
-        create: { jobId: id, path: `${id}/${photo ? 'image.jpg' : 'media.mp4'}` },
+        create: { jobId: id, path: `${id}/${isAudioId(current.formatId)?'media.mp3':photo ? 'image.jpg' : 'media.mp4'}` },
         update: { state: 'staging' },
       });
     return current;
@@ -96,7 +99,8 @@ export async function processJob(queued: any) {
     const { validateUrl } = await import('../../../packages/shared/src/core');
     validateUrl(j.sourceUrl);
     let photoId = photoPostId(j.sourceUrl);
-    const selection = photoId && phase === 'prepare' ? selectedPhoto(j.items, j.formatId || '', photoId) : null;
+    const audioSelection=phase==='prepare'&&isAudioId(j.formatId)?selectedAudio(j.items,j.formatId!,j.platform,photoId||videoPostId(j.sourceUrl)||undefined):null;
+    const selection = !audioSelection&&photoId && phase === 'prepare' ? selectedPhoto(j.items, j.formatId || '', photoId) : null;
     const data = await runAdapter(id, phase, j.sourceUrl, j.formatId, l, token);
     const resolved = shortTikTok(j.sourceUrl) ? checkedResolved(data.resolved) : null;
     const canonicalUrl = resolved?.url || j.sourceUrl;
@@ -112,11 +116,12 @@ export async function processJob(queued: any) {
     }
     const photoMetadata = photoId && phase === 'analyze' ? checkedPhotoMetadata(data, photoId) : null;
     const videoId = videoPostId(canonicalUrl);
-    const videoFormats = videoId && phase === 'analyze' ? checkedVideoFormats(data.formats,videoId) : null;
+    const audioFormats=phase==='analyze'?checkedAudioFormats(data.formats,j.platform,photoId?'photo':'video',photoId||videoId||undefined):[];
+    const videoFormats = videoId && phase === 'analyze' ? checkedVideoFormats(primaryFormats(data.formats),videoId) : null;
     if (!photoId && data.kind && data.kind !== 'video') throw new AppError('FORMAT_UNAVAILABLE');
-    if (selection) {
-      const checked = checkedPhotoFile(data, selection, l);
-      const handle = await open(filePath(`${id}/image.jpg`), constants.O_RDONLY | constants.O_NOFOLLOW);
+    if (selection||audioSelection) {
+      const checked = audioSelection?checkedAudioFile(data,audioSelection,l):checkedPhotoFile(data, selection!, l);
+      const handle = await open(filePath(`${id}/${audioSelection?'media.mp3':'image.jpg'}`), constants.O_RDONLY | constants.O_NOFOLLOW);
       try {
         const st = await handle.stat();
         if (!st.isFile() || st.size !== checked.size) throw new AppError('INVALID_ASSET_PATH');
@@ -135,7 +140,7 @@ export async function processJob(queued: any) {
         const acceptedAt = new Date();
         const expiresAt = metadataDeadline(acceptedAt, data.sourceExpiresAt);
         if (expiresAt <= acceptedAt) throw new AppError('JOB_EXPIRED');
-        await tx.mediaItem.create({ data: { jobId: id, kind: photoMetadata ? 'photo' : 'video', formats: photoMetadata ? photoMetadata.formats : videoFormats || data.formats } });
+        await tx.mediaItem.create({ data: { jobId: id, kind: photoMetadata ? 'photo' : 'video', formats: photoMetadata ? photoMetadata.formats : videoFormats ? [...videoFormats,...audioFormats] : data.formats } });
         await tx.downloadJob.update({
           where: { id },
           data: {
@@ -150,13 +155,14 @@ export async function processJob(queued: any) {
           },
         });
       } else {
+        if(audioSelection&&JSON.stringify(selectedAudio(current.items,current.formatId||'',current.platform,photoId||videoId||undefined))!==JSON.stringify(audioSelection))throw new AppError('FORMAT_UNAVAILABLE');
         if (selection) {
           requirePhotoEnabled(l.enabledPlatforms);
           const stored = selectedPhoto(current.items, current.formatId || '', photoId!);
           if (JSON.stringify(stored) !== JSON.stringify(selection)) throw new AppError('FORMAT_UNAVAILABLE');
         }
         if (
-          data.file !== (selection ? 'image.jpg' : 'media.mp4') ||
+          data.file !== (audioSelection?'media.mp3':selection ? 'image.jpg' : 'media.mp4') ||
           !Number.isSafeInteger(data.size) ||
           data.size <= 0 ||
           data.size > l.maxBytes

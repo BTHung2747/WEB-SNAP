@@ -32,7 +32,10 @@ export class DownloadsService {
     });
     if (!t || t.expiresAt < new Date() || t.job.sessionId !== s.id) fail('JOB_EXPIRED', 410);
     const a = t.job.asset;
-    if (!a) fail('JOB_EXPIRED', 410);
+    // Cleanup may already have removed item/format rows. Check asset lifetime
+    // before deriving its file contract so an expired ticket remains HTTP 410.
+    if (!a || t.job.cancelRequested || t.job.state !== 'ready' || a.state !== 'available' ||
+        assetExpired(a, ownerExpired(t.job))) fail('JOB_EXPIRED', 410);
     const descriptor = assetDescriptor(t.jobId, t.job.items, a, t.job.formatId);
     let range;
     try {
@@ -47,7 +50,7 @@ export class DownloadsService {
     if (req.method === 'HEAD') {
       if (t.job.cancelRequested || a.state !== 'available' || assetExpired(a, ownerExpired(t.job)))
         fail('JOB_EXPIRED', 410);
-      if (descriptor.photo) {
+      if (descriptor.photo||descriptor.audio) {
         const h = await open(filePath(a.path), constants.O_RDONLY | constants.O_NOFOLLOW);
         try { const st = await h.stat(); if (!st.isFile() || st.size !== Number(a.size)) fail('JOB_EXPIRED', 410); }
         finally { await h.close(); }
@@ -130,7 +133,7 @@ export class DownloadsService {
       }
     }, 15000);
     try {
-      handle = await open(filePath(a.path), descriptor.photo ? constants.O_RDONLY | constants.O_NOFOLLOW : 'r');
+      handle = await open(filePath(a.path), descriptor.photo||descriptor.audio ? constants.O_RDONLY | constants.O_NOFOLLOW : 'r');
       const st = await handle.stat();
       if (st.size !== Number(a.size)) throw new Error('asset size mismatch');
       res.status(range.partial ? 206 : 200);

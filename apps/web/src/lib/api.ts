@@ -1,4 +1,8 @@
 export const messages: Record<string, string> = {
+  FEEDBACK_INVALID: 'Kiểm tra lại góp ý: chủ đề từ 1 đến 120 ký tự, nội dung từ 1 đến 4.000 ký tự, email hợp lệ nếu có. Chỉ nhận văn bản thuần, không HTML.',
+  FEEDBACK_TOO_LARGE: 'Góp ý vượt dung lượng cho phép. Hãy rút gọn nội dung rồi gửi lại.',
+  FEEDBACK_FULL: 'Hộp thư hiện đã đầy. Nội dung của bạn vẫn được giữ; vui lòng quay lại sau.',
+  FEEDBACK_NOT_FOUND: 'Phản hồi không còn trong hộp thư hoặc đã hết hạn lưu.',
   FIXTURE_URL_NOT_SIMULATED: 'Link này chưa được bản minh họa mô phỏng. Chỉ dùng link TikTok canonical /photo/ hoặc /video/; bản local không gọi nguồn thật.',
   INVALID_URL: 'Link chưa hợp lệ. Hãy dán đường dẫn HTTPS đến một bài đăng.',
   UNSUPPORTED_PLATFORM: 'Nền tảng này chưa được bật sau kiểm chứng tải thật.',

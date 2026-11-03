@@ -15,6 +15,7 @@ import time
 import urllib.parse
 
 import requests
+from audio_media import music_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError
 from yt_dlp.networking import Request
 from yt_dlp.utils import DownloadError
 from .adapter import Rejected, bound, owned_folder
@@ -196,6 +197,8 @@ class _Output:
 
 
 def _code(error, budget):
+    if isinstance(error, AudioError):
+        return error.args[0] if error.args and error.args[0] in ('FORMAT_UNAVAILABLE','LIMIT_EXCEEDED','SOURCE_TIMEOUT','INVALID_ASSET_PATH') else 'CONTENT_UNAVAILABLE'
     if isinstance(error, PhotoError):
         return error.code
     if isinstance(error, Rejected) and error.args and error.args[0] in ('INVALID_ASSET_PATH', 'LIMIT_EXCEEDED'):
@@ -225,12 +228,40 @@ def _execute(phase, url, folder, selected=None, *, limits=None, session_factory=
         require(phase == 'analyze' or analyze_input_used == 0, 'CAP_POLICY')
         budget.carry_metadata_bytes(analyze_input_used)
         budget.check()
-        if phase == 'prepare':
+        audio_requested = phase == 'prepare' and type(selected) is str and AUDIO_ID.fullmatch(selected)
+        if phase == 'prepare' and not audio_requested:
             output = _Output(folder)
         ydl = PhotoYDL(budget, folder, session_factory)
         private, public = _metadata(ydl, target, expected)
+        audio_format,audio_url=music_choice(private)
         if phase == 'analyze':
-            result = public_metadata(public)
+            result = public_metadata(public, private.get('caption'))
+            if audio_format:result['formats'].append(audio_format)
+        elif audio_requested:
+            require(audio_format is not None and audio_format['id']==selected,'PHOTO_SELECTION')
+            source=folder/'audio-source.bin';identity=None
+            require(not os.path.lexists(source),'INVALID_ASSET_PATH')
+            try:
+                fd=os.open(source,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+                st=os.fstat(fd);identity=(st.st_dev,st.st_ino)
+                budget.prepare();budget.output_cap=budget.input_cap;ydl.allowed_url=audio_url
+                with os.fdopen(fd,'wb') as stream, ydl.urlopen(Request(audio_url)) as response:
+                    mime=response.headers.get('Content-Type','').split(';')[0].lower()
+                    require(mime in ('audio/mpeg','audio/mp4','audio/aac','video/mp4','application/octet-stream'),'CONTENT_UNAVAILABLE')
+                    while True:
+                        data=response.read(16384)
+                        if not data:break
+                        stream.write(data);budget.check()
+                ydl.close();ydl=None;budget.check()
+                result=encode_audio(source,folder,audio_format,budget.network_total,budget.prepare_end,max_output=limits.output_bytes,check=budget.check)
+                success=True
+                return result
+            finally:
+                if identity is not None:
+                    try:
+                        st=source.lstat()
+                        if not source.is_symlink() and (st.st_dev,st.st_ino)==identity:source.unlink()
+                    except FileNotFoundError:pass
         else:
             chosen = select(public, selected)
             budget.begin_image()

@@ -2,6 +2,7 @@ import { AppError } from './core';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { shortTikTok } from './tiktok-short';
+import { primaryFormats } from './audio';
 
 export const fullHdVideo = (w: unknown, h: unknown): boolean =>
   Number.isSafeInteger(w) && Number.isSafeInteger(h) && Number(w) > 0 && Number(h) > 0 &&
@@ -41,7 +42,7 @@ export function checkedVideoFormats(value: unknown, expected: string) {
 }
 export function selectedVideo(items: any[], id: string, expected: string) {
   if (items.length !== 1 || items[0].kind !== 'video') return reject();
-  const row = checkedVideoFormats(items[0].formats,expected).find(f => f.id === id);
+  const row = checkedVideoFormats(primaryFormats(items[0].formats),expected).find(f => f.id === id);
   return row ?? reject();
 }
 export function videoTransfer(items: any[], id: string, expected: string) {

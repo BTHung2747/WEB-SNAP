@@ -6,6 +6,7 @@ FROM ${APP_IMAGE} AS assets
 FROM ${CADDY_IMAGE}
 COPY --from=assets /app/apps/web/dist/ /srv/
 COPY infra/production/Caddyfile /etc/caddy/Caddyfile
+COPY infra/production/web-entrypoint.sh /usr/local/bin/wed-web-entrypoint
 # Only unprivileged ports are used. The official binary's file capability can
 # prevent exec under cap-drop ALL; remove it without relaxing runtime guards.
 RUN setcap -r /usr/bin/caddy \
@@ -13,5 +14,6 @@ RUN setcap -r /usr/bin/caddy \
     && test -z "$caddy_caps" \
     && chown -R 1000:1000 /data /config
 USER 1000:1000
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/wed-web-entrypoint"]
 EXPOSE 8080 8443
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { AppError } from './core';
+import { checkedAudioFormats, primaryFormats, isAudioId, selectedAudio } from './audio';
 
 const reject = (code = 'FORMAT_UNAVAILABLE'): never => { throw new AppError(code); };
 const hex = z.string().regex(/^[a-f0-9]{64}$/);
@@ -60,15 +61,17 @@ export function checkedPhotoFormats(value: unknown, expected?: string): PhotoFor
   return rows;
 }
 export function checkedPhotoMetadata(value: unknown, expected: string) {
-  const p = parse(z.object({ kind: z.literal('photo'), title: z.literal('Album TikTok'), duration: z.null(),
-    summary: summarySchema, formats: z.array(formatSchema).min(1).max(50) }).strict(), value);
+  if(!value||typeof value!=='object')reject();
+  const audio=checkedAudioFormats((value as any).formats,'tiktok','photo',expected);
+  const p = parse(z.object({ kind: z.literal('photo'), title: z.string().min(1).max(300), duration: z.null(),
+    summary: summarySchema, formats: z.array(formatSchema).min(1).max(50) }).strict(), {...(value as Record<string, unknown>),formats:primaryFormats((value as any).formats)});
   const s = checkedSummary(p.summary, expected), formats = checkedPhotoFormats(p.formats, expected);
   if (s.snapshotKey !== formats[0].snapshotKey) reject();
-  return { kind: 'photo' as const, title: p.title, duration: null, formats };
+  return { kind: 'photo' as const, title: p.title, duration: null, formats:[...formats,...audio] };
 }
 export function selectedPhoto(items: any[], formatId: string, expected?: string): PhotoFormat {
   if (items.length !== 1 || items[0].kind !== 'photo') reject();
-  const rows = checkedPhotoFormats(items[0].formats, expected);
+  const rows = checkedPhotoFormats(primaryFormats(items[0].formats), expected);
   return rows.find(r => r.id === formatId) ?? reject();
 }
 export function checkedPhotoFile(value: unknown, selected: PhotoFormat, limits: { maxBytes: number; maxInputBytes: number }) {
@@ -85,9 +88,15 @@ export function checkedPhotoFile(value: unknown, selected: PhotoFormat, limits: 
 export function assetDescriptor(jobId: string, items: any[], asset: { path: string }, formatId: string | null) {
   if (items.length !== 1) reject('INVALID_ASSET_PATH');
   const photo = items[0].kind === 'photo';
+  if(isAudioId(formatId)){
+    const rows=items[0].formats as any[];const platform=rows.find(f=>f.id===formatId)?.selection?.platform;
+    selectedAudio(items,formatId,platform);
+    if(asset.path!==`${jobId}/media.mp3`)reject('INVALID_ASSET_PATH');
+    return {photo:false,audio:true,mime:'audio/mpeg',filename:'wed-snap-audio.mp3'};
+  }
   if (photo) selectedPhoto(items, formatId || '');
   else if (items[0].kind !== 'video') reject('INVALID_ASSET_PATH');
   const name = photo ? 'image.jpg' : 'media.mp4';
   if (asset.path !== `${jobId}/${name}`) reject('INVALID_ASSET_PATH');
-  return { photo, mime: photo ? 'image/jpeg' : 'video/mp4', filename: photo ? 'wed-snap-image.jpg' : 'wed-snap-video.mp4' };
+  return { photo, audio:false, mime: photo ? 'image/jpeg' : 'video/mp4', filename: photo ? 'wed-snap-image.jpg' : 'wed-snap-video.mp4' };
 }

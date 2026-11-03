@@ -152,7 +152,7 @@ export default async function(obj) {
 
         return {
             picker: imageLinks,
-            lab: { id: detail.id, resolvedPostId: postId, privateItem: detail.privateItem, imagePost: !!detail.imagePost, dimensions: images.map(i => [i.imageWidth, i.imageHeight]) },
+            lab: { id: detail.id, resolvedPostId: postId, privateItem: detail.privateItem, imagePost: !!detail.imagePost, dimensions: images.map(i => [i.imageWidth, i.imageHeight]), caption: detail.desc, music: { id: detail.music?.id, duration: detail.music?.duration } },
             urls: audio,
             audioFilename: audioFilename,
             isAudioOnly: true,

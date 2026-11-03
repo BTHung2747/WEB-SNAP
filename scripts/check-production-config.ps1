@@ -9,6 +9,7 @@ $text=@'
 PUBLIC_HOST=production-fixture.invalid
 ACME_EMAIL=acme@example.invalid
 CONTACT_EMAIL=operator@example.invalid
+ADMIN_PATH=/fixture-console-0123456789
 APP_IMAGE=fixture.invalid/app:offline
 EGRESS_IMAGE=fixture.invalid/egress:offline
 WEB_IMAGE=fixture.invalid/static:offline
@@ -107,7 +108,10 @@ try{
  Require ($ts.compilerOptions.outDir -eq 'dist' -and $ts.compilerOptions.rootDir -eq '.') 'COMPILED_LAYOUT'
  foreach($file in @('apps/api/src/main.ts','apps/worker/src/main.ts','scripts/create-admin.ts','apps/web/index.html','infra/production/Caddyfile')){Require (Test-Path -LiteralPath (Join-Path $root $file)) 'ENTRY_SOURCE_EXISTS'}
  $app=[IO.File]::ReadAllText((Join-Path $root 'Dockerfile'));$web=[IO.File]::ReadAllText((Join-Path $root 'infra/production/Dockerfile.web'))
- Require ($app.Contains('RUN npm run build') -and $web.Contains('FROM caddy:2.11.7-alpine') -and $web.Contains('COPY --from=assets /app/apps/web/dist/ /srv/')) 'STATIC_BUILD_WIRING'
+ Require ($app.Contains('RUN npm run build') -and $web.Contains('ARG CADDY_IMAGE=caddy:2.11.7-alpine') -and $web.Contains('FROM ${CADDY_IMAGE}') -and $web.Contains('COPY --from=assets /app/apps/web/dist/ /srv/')) 'STATIC_BUILD_WIRING'
+ Require ($c.services.proxy.environment.ADMIN_PATH -ceq '/fixture-console-0123456789' -and $web.Contains('ENTRYPOINT ["/bin/sh", "/usr/local/bin/wed-web-entrypoint"]')) 'ADMIN_ENTRY_WIRING'
+ $noAdmin=Render ($text.Replace('ADMIN_PATH=/fixture-console-0123456789','ADMIN_PATH=')) $false
+ $report.cases+=@{name='empty ADMIN_PATH rejects Compose';result='PASS';actualExit=$noAdmin.actualExit}
  Require ([IO.File]::ReadAllText((Join-Path $root 'apps/worker/src/main.ts')).Contains('concurrency: 1')) 'CONCURRENCY_ONE'
  $report.cases+=@{name='existing build script/tsconfig/static artifact and concurrency wiring';result='PASS';kind='source inspection only'}
  $report.notRun=@('Docker engine/pull/build/start','real env/secrets/local data','Caddy adapt/validate binary','fresh npm/TypeScript/Vite build: no host project dependencies','TLS/ACME/target resources/P5-P6/source/browser/Range on target')

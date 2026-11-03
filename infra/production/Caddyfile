@@ -73,14 +73,19 @@
     redir /terms/ /terms 308
     redir /report/ /report 308
     redir /ung-ho/ /ung-ho 308
-    @admin path /admin /admin/*
+    redir /gop-y/ /gop-y 308
+    @oldAdmin path /admin /admin/* /admin.html /admin.html/*
+    handle @oldAdmin {
+        respond 404
+    }
+    @admin path {$ADMIN_PATH}
     handle @admin {
         header X-Robots-Tag "noindex, nofollow"
         root * /srv
         rewrite * /admin.html
         file_server
     }
-    @publicPages path /privacy /terms /report /ung-ho
+    @publicPages path /privacy /terms /report /ung-ho /gop-y
     handle @publicPages {
         root * /srv
         encode zstd gzip

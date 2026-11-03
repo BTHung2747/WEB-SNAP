@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { randomBytes } from 'node:crypto';
+import {privateAdminEntry} from './admin-entry';
 const nonce = randomBytes(16).toString('base64');
 export default defineConfig({
   html: { cspNonce: nonce },
   cacheDir: '/tmp/node_modules/.vite',
-  plugins: [react()],
+  plugins: [react(),privateAdminEntry()],
   server: {
     host: '0.0.0.0',
     port: 5173,

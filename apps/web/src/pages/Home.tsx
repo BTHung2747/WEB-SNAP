@@ -23,6 +23,9 @@ export default function Home({ session }: { session: Session }) {
   const photo = job?.items[0]?.kind === 'photo';
   const photoBlocked = photo && !photoEnabled;
   const item = job?.items[0];
+  const imageFormats=item?.formats.filter(f=>f.kind==='photo')||[];
+  const videoFormats=item?.formats.filter(f=>f.kind!=='audio')||[];
+  const audioFormat=item?.formats.find(f=>f.kind==='audio');
   const selected = item?.formats.find((f) => f.id === format);
   const downloadLink = useDownloadLink(photoBlocked ? null : job, session.csrf);
   const prepareKey = useRef(crypto.randomUUID());
@@ -56,7 +59,7 @@ export default function Home({ session }: { session: Session }) {
     }
     setJob(j);
     setError(j.errorCode ? messages[j.errorCode] || j.errorCode : '');
-    if (j.state === 'selectable') setFormat((f) => f || initialSourceFormat(j.items[0]?.formats || []));
+    if (j.state === 'selectable') setFormat((f) => f || initialSourceFormat((j.items[0]?.formats || []).filter(r=>r.kind!=='audio')));
   }, (e, missing) => {
     if (missing) {
       stopPreparing();
@@ -179,17 +182,18 @@ export default function Home({ session }: { session: Session }) {
     document.getElementById('video-url')?.focus();
   }
   function downloadAction(formatId: string, imageIndex?: number) {
+    const audio=item?.formats.find(f=>f.id===formatId)?.kind==='audio';
     const currentFormat = formatId === format;
-    const actionClass = 'balanced-action';
+    const actionClass = 'balanced-action'+(audio?' balanced-audio-action':'');
     if (state === 'selectable') return <button className={actionClass} disabled={busy}
       onClick={(e) => {
         if (imageIndex) e.currentTarget.closest('article')?.focus({ preventScroll: true });
         else resultRegion.current?.focus({ preventScroll: true });
         void prepare(formatId);
-      }}><Icon name="arrow" />{imageIndex ? `Chuẩn bị ảnh ${imageIndex}` : 'Chuẩn bị MP4'}</button>;
+      }}><Icon name="arrow" />{audio?'Chuẩn bị MP3':imageIndex ? `Chuẩn bị ảnh ${imageIndex}` : 'Chuẩn bị MP4'}</button>;
     if (state === 'ready' && currentFormat && downloadLink.url) return <a className={actionClass} href={downloadLink.url}
-      download={photo ? 'wed-snap-image.jpg' : 'wed-snap-video.mp4'} onClick={() => setStarted(true)}>
-      <Icon name="arrow" />{imageIndex ? `Tải ảnh ${imageIndex}` : 'Tải MP4'}</a>;
+      download={audio?'wed-snap-audio.mp3':photo ? 'wed-snap-image.jpg' : 'wed-snap-video.mp4'} onClick={() => setStarted(true)}>
+      <Icon name="arrow" />{audio?'Tải MP3':imageIndex ? `Tải ảnh ${imageIndex}` : 'Tải MP4'}</a>;
     if (state === 'ready' && currentFormat && downloadLink.error) return <><p className="error" role="alert">{downloadLink.error}</p><button className={actionClass} onClick={downloadLink.retry}>Tạo lại liên kết tải</button></>;
     return <button className={actionClass} disabled>{currentFormat ? state === 'ready' ? 'Đang tạo liên kết…' : 'Đang chuẩn bị…' : 'Đã khóa lựa chọn'}</button>;
   }
@@ -252,7 +256,7 @@ export default function Home({ session }: { session: Session }) {
             {!jobId && error && <p className="error" role="alert">{error}</p>}
           </div>
         </section>
-        <dialog ref={resultDialog} className="result-dialog balanced-dialog" aria-labelledby="result-dialog-title"
+        <dialog ref={resultDialog} className={`result-dialog balanced-dialog${photo?' photo-dialog':''}`} aria-labelledby="result-dialog-title"
           onClose={() => document.getElementById('video-url')?.focus()}>
         <h2 id="result-dialog-title" className="sr-only">{photo ? 'Ảnh trong bài đăng' : 'Video của bạn'}</h2>
         <button className="balanced-close" aria-label="Đóng kết quả" onClick={closeResults}><Icon name="close" /></button>
@@ -279,27 +283,22 @@ export default function Home({ session }: { session: Session }) {
                 {photoBlocked && <p className="muted" role="status">Tải ảnh TikTok chưa được bật. Bạn có thể thử một đường dẫn video được hỗ trợ.</p>}
                 {job && !photoBlocked && ['selectable', 'queued', 'preparing', 'ready'].includes(state) && (
                   photo ? <div className="balanced-album">
-                    <div className="balanced-album-list" role="group" aria-label="Ảnh trong bài đăng">
-                      {item?.formats.map((f, i) => {
+                    <header className="album-heading"><h3>{job.title || (imageFormats.length===1?'Ảnh TikTok':'Bài ảnh TikTok')}</h3><p>{imageFormats.length} ảnh</p></header>
+                    <div className="album-toolbar">{audioFormat&&downloadAction(audioFormat.id)}<button className="balanced-other" onClick={closeResults}>Thử liên kết khác</button></div>
+                    <div className="album-photo-grid" role="group" aria-label="Ảnh trong bài đăng">
+                      {imageFormats.map((f, i) => {
                         const index = f.index || i + 1;
                         return <article tabIndex={-1} data-format-id={f.id} aria-label={`Ảnh ${index}`}
-                          className={`balanced-item${format === f.id && (busy || state !== 'selectable') ? ' is-selected' : ''}`} key={f.id}>
-                          <div className="balanced-visual">
+                          className={`album-photo-card${format === f.id && (busy || state !== 'selectable') ? ' is-selected' : ''}`} key={f.id}>
+                          <div className="album-thumbnail">
                           <MediaPreview url={f.previewUrl} jobId={job.id} alt={`Xem trước ảnh ${index}`} compact />
                           </div>
-                          <div className="balanced-copy">
-                            <p className="balanced-kind">Ảnh trong bài đăng</p>
-                            <h3>{job.title || 'Bài ảnh của bạn'}</h3>
-                            <p className="balanced-meta">Ảnh {index} / {item?.formats.length || 0}</p>
-                            <div className="balanced-photo-info"><span>Thông tin ảnh</span><strong>{f.label}</strong>
-                              {f.width && f.height ? <span>{f.width} × {f.height}</span> : null}</div>
-                            <div className="balanced-controls">{downloadAction(f.id, index)}
-                              <button className="balanced-other" onClick={closeResults}>Thử liên kết khác</button></div>
-                          </div>
+                          <p className="album-image-caption">Ảnh {index}{f.width&&f.height?` · ${f.width} × ${f.height}`:''}</p>
+                          {downloadAction(f.id,index)}
                         </article>;
                       })}
                     </div>
-                    {state !== 'selectable' && <p className="album-lock-note">Ảnh đã chọn được khóa cho tác vụ này. Muốn tải ảnh khác, hãy phân tích lại link.</p>}
+                    {state !== 'selectable' && <p className="album-lock-note">{selected?.kind==='audio'?'Đã chọn âm thanh MP3.':'Ảnh đã chọn được khóa cho tác vụ này.'} Muốn chọn tệp khác, hãy phân tích lại link.</p>}
                   </div> : <div className="balanced-item">
                     <div className="balanced-visual"><MediaPreview url={job.previewUrl} jobId={job.id} alt={job.title ? `Xem trước: ${job.title}` : 'Ảnh xem trước video'} /></div>
                     <div className="balanced-copy">
@@ -307,15 +306,16 @@ export default function Home({ session }: { session: Session }) {
                       <h3>{job.title || 'Video của bạn'}</h3>
                       {job.duration != null && <p className="balanced-meta">{Math.floor(job.duration / 60)}:{String(Math.floor(job.duration % 60)).padStart(2, '0')}</p>}
                       <div className="balanced-quality">
-                        {(item?.formats.length || 0) > 1 && <label htmlFor="format">Chất lượng</label>}
-                        {(item?.formats.length || 0) > 1 && <select id="format" name="format" value={format} disabled={busy || state !== 'selectable'} title={selected?.label} aria-describedby="video-format-note"
+                        {videoFormats.length > 1 && selected?.kind!=='audio' && <label htmlFor="format">Chất lượng</label>}
+                        {videoFormats.length > 1 && selected?.kind!=='audio' && <select id="format" name="format" value={format} disabled={busy || state !== 'selectable'} title={selected?.label} aria-describedby="video-format-note"
                             onChange={(e) => { setFormat(e.target.value); prepareKey.current = crypto.randomUUID(); }}>
-                            {item?.formats.map((f) => <option value={f.id} key={f.id}>{f.label}</option>)}
+                            {videoFormats.map((f) => <option value={f.id} key={f.id}>{f.label}</option>)}
                           </select>}
                         {selected && <p id="video-format-note">{selected.label}</p>}
                       </div>
                       <div className="balanced-controls">
-                        {selected ? downloadAction(selected.id) : <button className="balanced-action" disabled>Chưa có lựa chọn phù hợp</button>}
+                        {selected?.kind!=='audio'&&selected ? downloadAction(selected.id) : <button className="balanced-action" disabled>{selected?.kind==='audio'?'Đã chọn âm thanh MP3':'Chưa có lựa chọn phù hợp'}</button>}
+                        {audioFormat&&downloadAction(audioFormat.id)}
                         <button className="balanced-other" onClick={closeResults}>Thử liên kết khác</button>
                       </div>
                     </div>

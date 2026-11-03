@@ -1,4 +1,4 @@
-﻿# API local
+# API local
 
 Base `/api/v1`. OpenAPI được Nest tạo tại `/api/docs-json`. Cookie `ws_session`: ngẫu nhiên 256 bit, DB giữ SHA-256, HttpOnly, SameSite=Lax, path=/api; Secure cấu hình true cho HTTPS public. Job ID không cấp quyền.
 
@@ -406,3 +406,11 @@ Offline35 capture exit0 UTC12:52:53.252/61artifacts, đối chứng actualcovera
 ### Worker shutdown36 — không thay HTTP contract
 
 Main.ts sửa hẹp sau baseline thực: await sweep periodic đang chạy trước đóngresources, stopping chặn timer mới/shutdownPromise chung. Ownlab36 V4 cùngexpected/test9PASS2FAIL→11PASS/exit0, tailSessiongone/freshgiữ khichildcònsống; PG/Redis/consumer0 vàpostexit>2fixtureintervalsnochange. Own36StopStoresEmptytrướcstop, cleanupfixturevẫnởMatrixfinally. 35 đãaudit scoped;36chờaudit, rawcácobserverFAILgiữ. Không HTTP mới/đổi schema/contract/auth; snapshot/APIpayload khôngđổi. Chỉfixture2s/emptyjobs/ownDB+Redis9/800MiB/noports/sourceRO; khôngmainapply/default30/load/job-transferinflight/public/platform/fullR10/P3/P4/P0–P6.
+# Góp ý và inbox quản trị (candidate 03/11/2026, chưa deploy)
+
+- `POST /api/v1/feedback`: cookie phiên + Origin đúng + CSRF. JSON duy nhất `{kind,subject,message,name?,email?}`; kind `feedback|bug|idea`, subject 1..120, message 1..4000, name≤80, email hợp lệ≤254 hoặc trống. Trim/văn bản thuần, từ chối HTML/control characters và unknown fields. Express JSON limit32KiB áp dụng khi đọc, gồm dữ liệu đã giải nén; chỉ route góp ý và admin/feedback, không đổi parser của job/upload. Trả201 `{received:true,id}` sau PostgreSQL commit, không echo thư/email hoặc gửi mail.
+- Redis:3attempt/600s/session và10attempt/3600s/trustedIP, invalid schema cũng tiêu quota sau CSRF. IP bucket dùng HMAC serversecret/TTL, không lưu IP hoặc FK session/job trong thư; không log thư/email. Không chấp nhận forwardedIP từ peer không được tin cậy.
+- `GET /api/v1/admin/feedback?page=1&status=unread`: chỉ admin; page1..50, status optional `unread|read|resolved`, strict scalar query/khôngduplicate.20rows/page, thứ tự createdAtDESC/idDESC; kết quả `{items,page,pages,total,pageSize}`. List không gồm message/email. Page vượt trang cuối được clamp.
+- `GET /api/v1/admin/feedback/:id`: admin, UUID hợp lệ; private full detail. Không tự đổi status bằng GET. `PUT` cùng URL + `{status}` và `DELETE` cùng URL đều cần admin+session/Origin/CSRF; trả200 `{ok:true}`. Xóa vĩnh viễn, UI có xác nhận. Không route public list/detail hoặc attachment/fetch URL.
+- Trần1.000record, serialized PostgreSQL advisory transaction lock/count+insert. Đầy trả503 `FEEDBACK_FULL`; không tự bỏ thư còn hạn để nhận thêm. Thư quá90ngày không đọc được qua detail và được xóa khi nhận thư/mở inbox. Đây lazy retention, không hứa background purge khi không có traffic. Admin có thể xóa sớm; backup vận hành ngoài live table không do endpoint này xóa.
+- Mã mới:400 `FEEDBACK_INVALID`,413 `FEEDBACK_TOO_LARGE`,404 `FEEDBACK_NOT_FOUND`,503 `FEEDBACK_FULL`;429 `RATE_LIMITED` như rate helper hiện có.401 không được dùng thay guard403 session/admin/CSRF hiện hành.

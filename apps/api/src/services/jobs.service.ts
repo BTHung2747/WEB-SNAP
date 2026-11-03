@@ -22,6 +22,7 @@ import { admission, csrf, inputSchema, own, parse, prepareSchema } from '../comm
 import { clientIp } from '../security/client-ip';
 import { ratePolicy } from '../security/rate-policy';
 import { photoPostId, requirePhotoEnabled, selectedPhoto, checkedPhotoFormats } from '../../../../packages/shared/src/tiktok-photo';
+import { isAudioId, selectedAudio, primaryFormats } from '../../../../packages/shared/src/audio';
 import { videoPostId, requireVideoEnabled, selectedVideo } from '../../../../packages/shared/src/tiktok-video';
 import { shortTikTok, requireShortEnabled } from '../../../../packages/shared/src/tiktok-short';
 import { cachedPreview, legacyVideoPreview, previewKeys } from './preview-cache';
@@ -79,7 +80,7 @@ export class JobsService {
       duration: j.duration,
       metadataAcceptedAt: j.metadataAcceptedAt,
       metadataExpiresAt: j.metadataExpiresAt,
-      items: ['failed', 'cancelled', 'expired'].includes(j.state) ? [] : j.items.map((i) => ({ id: i.id, kind: i.kind, formats: i.kind === 'photo' ? checkedPhotoFormats(i.formats).map(f=>({...f,previewUrl:cacheKeys.has(f.id)?`/api/v1/jobs/${j.id}/preview/${f.id}`:null})) : i.formats })),
+      items: ['failed', 'cancelled', 'expired'].includes(j.state) ? [] : j.items.map((i) => ({ id: i.id, kind: i.kind, formats: i.kind === 'photo' ? [...checkedPhotoFormats(primaryFormats(i.formats)).map(f=>({...f,previewUrl:cacheKeys.has(f.id)?`/api/v1/jobs/${j.id}/preview/${f.id}`:null})),...(i.formats as any[]).filter(f=>f.kind==='audio')] : i.formats })),
       previewUrl: j.title && !j.items.some(i => i.kind === 'photo') && !['failed', 'cancelled', 'expired'].includes(j.state) &&
         (j.platform!=='tiktok' || cacheKeys.has('video')) ? `/api/v1/jobs/${j.id}/preview` : null,
       mode: 'temporary',
@@ -95,7 +96,7 @@ export class JobsService {
         return { expired: true, image: null };
       if (formatId) {
         const items=await tx.mediaItem.findMany({where:{jobId:id}});
-        if (items.length!==1 || items[0].kind!=='photo' || !checkedPhotoFormats(items[0].formats).some(f=>f.id===formatId))
+        if (items.length!==1 || items[0].kind!=='photo' || !checkedPhotoFormats(primaryFormats(items[0].formats)).some(f=>f.id===formatId))
           return {expired:false,image:null};
       }
       try { return { expired:false,image:formatId ? await cachedPreview(id,formatId) :
@@ -122,11 +123,13 @@ export class JobsService {
       if (await expireSelectableMetadata(tx, j)) return null;
       if (expiredMetadataJob(j)) fail('JOB_EXPIRED', 410);
       if (j.cancelRequested || ownerExpired(j)) fail('JOB_EXPIRED', 410);
+      const audio=isAudioId(selected.formatId);
+      if(audio) selectedAudio(j.items,selected.formatId,j.platform,j.sourceUrl?photoPostId(j.sourceUrl)||videoPostId(j.sourceUrl)||undefined:undefined);
       if (j.platform === 'tiktok' && (j.items.some(i => i.kind === 'video') ||
           (j.sourceUrl && videoPostId(j.sourceUrl)))) requireVideoEnabled(l.enabledPlatforms);
       if (j.items.some(i => i.kind === 'photo') || (j.sourceUrl && photoPostId(j.sourceUrl))) {
         requirePhotoEnabled(l.enabledPlatforms);
-        selectedPhoto(j.items, selected.formatId, j.sourceUrl ? photoPostId(j.sourceUrl) || undefined : undefined);
+        if(!audio) selectedPhoto(j.items, selected.formatId, j.sourceUrl ? photoPostId(j.sourceUrl) || undefined : undefined);
         if (j.items[0].id !== selected.itemId) fail('FORMAT_UNAVAILABLE');
       }
       if (j.prepareKey) {
@@ -136,7 +139,7 @@ export class JobsService {
         fail('IDEMPOTENCY_CONFLICT', 409);
       }
       if (j.state !== 'selectable') fail('FORMAT_UNAVAILABLE');
-      if (j.sourceUrl && videoPostId(j.sourceUrl)) selectedVideo(j.items,selected.formatId,videoPostId(j.sourceUrl)!);
+      if (!audio&&j.sourceUrl && videoPostId(j.sourceUrl)) selectedVideo(j.items,selected.formatId,videoPostId(j.sourceUrl)!);
       const item = j.items.find((i) => i.id === selected.itemId);
       if (!item || !(item.formats as any[]).some((f) => f.id === selected.formatId))
         fail('FORMAT_UNAVAILABLE');

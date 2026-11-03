@@ -110,8 +110,8 @@ jobs:
               find . -type f -exec sha256sum {} \; | LC_ALL=C sort
             ' > "$RELEASE_DIR/app-static.txt"
           timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
-            --name "$CONTAINER_PREFIX-web" --user 1000:1000 --entrypoint /bin/sh \
-            "$IMAGE_ROOT-web:$RELEASE_TAG" -ec '
+            --name "$CONTAINER_PREFIX-web" --user 1000:1000 --env ADMIN_PATH=/fixture-console-0123456789 \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" /bin/sh -ec '
               caddy_caps="$(getcap /usr/bin/caddy)"
               test -z "$caddy_caps"
               test -s /srv/index.html; test -d /srv/assets
@@ -134,18 +134,18 @@ jobs:
       - name: Validate with the pinned Caddy binary without network
         run: |
           set -euo pipefail
-          guard=(--rm --network none --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --ipc private --pids-limit 64 --cpus 1 --memory 128m --memory-swap 128m --tmpfs /data:rw,noexec,nosuid,size=16m,uid=1000,gid=1000 --tmpfs /config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000 --env PUBLIC_HOST=release.example.invalid --env ACME_EMAIL=ci@example.invalid)
+          guard=(--rm --network none --read-only --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --ipc private --pids-limit 64 --cpus 1 --memory 128m --memory-swap 128m --tmpfs /data:rw,noexec,nosuid,size=16m,uid=1000,gid=1000 --tmpfs /config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000 --env ADMIN_PATH=/fixture-console-0123456789 --env PUBLIC_HOST=release.example.invalid --env ACME_EMAIL=ci@example.invalid)
           timeout --signal=TERM --kill-after=5s 30s docker run "${guard[@]}" \
-            --name "$CONTAINER_PREFIX-caddy-version" --entrypoint caddy \
-            "$IMAGE_ROOT-web:$RELEASE_TAG" version | tee "$RELEASE_DIR/caddy-version.txt"
+            --name "$CONTAINER_PREFIX-caddy-version" \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" caddy version | tee "$RELEASE_DIR/caddy-version.txt"
           grep -Eq '^v2\.11\.7([[:space:]]|$)' "$RELEASE_DIR/caddy-version.txt"
           timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
-            --name "$CONTAINER_PREFIX-caddy-adapt" --entrypoint caddy \
-            "$IMAGE_ROOT-web:$RELEASE_TAG" adapt --config /etc/caddy/Caddyfile --adapter caddyfile \
+            --name "$CONTAINER_PREFIX-caddy-adapt" \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile \
             > "$RELEASE_DIR/caddy-adapted.json"
           timeout --signal=TERM --kill-after=5s 60s docker run "${guard[@]}" \
-            --name "$CONTAINER_PREFIX-caddy-validate" --entrypoint caddy \
-            "$IMAGE_ROOT-web:$RELEASE_TAG" validate --config /etc/caddy/Caddyfile --adapter caddyfile
+            --name "$CONTAINER_PREFIX-caddy-validate" \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
       - name: Check public and private HTTP routes before publish
         timeout-minutes: 3
@@ -159,13 +159,13 @@ jobs:
             --name "$CONTAINER_PREFIX-routes-web" --network none "${guard[@]}" \
             --tmpfs /data:rw,noexec,nosuid,size=16m,uid=1000,gid=1000 \
             --tmpfs /config:rw,noexec,nosuid,size=8m,uid=1000,gid=1000 \
-            --env PUBLIC_HOST=http://release.example.invalid --env ACME_EMAIL=ci@example.invalid \
-            --entrypoint /bin/sh "$IMAGE_ROOT-web:$RELEASE_TAG" \
+            --env ADMIN_PATH=/fixture-console-0123456789 --env PUBLIC_HOST=http://release.example.invalid --env ACME_EMAIL=ci@example.invalid \
+            "$IMAGE_ROOT-web:$RELEASE_TAG" /bin/sh \
             -ec 'exec timeout -s TERM -k 5 90 caddy run --config /etc/caddy/Caddyfile --adapter caddyfile' \
             > "$RELEASE_DIR/routes-web-id.txt"
           timeout --signal=TERM --kill-after=5s 70s docker run --rm --pull never \
             --name "$CONTAINER_PREFIX-routes-client" --network "container:$CONTAINER_PREFIX-routes-web" "${guard[@]}" \
-            --env PYTHONDONTWRITEBYTECODE=1 \
+            --env ADMIN_PATH=/fixture-console-0123456789 --env PYTHONDONTWRITEBYTECODE=1 \
             --mount "type=bind,source=$GITHUB_WORKSPACE/scripts/check-release-routes.py,target=/checks/routes.py,readonly" \
             --entrypoint /usr/bin/timeout "$IMAGE_ROOT-app:$RELEASE_TAG" \
             --signal=TERM --kill-after=5s 60s python3 -B /checks/routes.py \

@@ -73,12 +73,14 @@ Stack trong mục 0 là phương án triển khai của bản cập nhật này.
 
 - Nhận link, nhận diện nền tảng, phân tích thông tin, hiển thị ảnh xem trước, loại nội dung, chất lượng và kích thước nếu biết.
 - Video đơn; bài có nhiều ảnh thì cho tải từng ảnh. Loại nội dung nào chưa kiểm chứng phải hiện thông báo không hỗ trợ.
+- Bổ sung theo chủ02/11/2026: phần ảnh hiển thị lưới xem trước và nút riêng từng ảnh; giữ bố cục video đã duyệt, thêm MP3 ở cả phần ảnh/video khi nguồn có âm thanh hợp lệ. Dùng tiêu đề/caption thật của bài thay nhãn Album gán cứng. Phạm vi và cổng triển khai ở [task ảnh/MP3](docs/tasks/TIKTOK_PHOTO_GRID_AUDIO_20261102.md); chưa coi MP3/preview nguồn thật đã nghiệm thu chỉ từ yêu cầu này. Giữ một lựa chọn/tệp mỗi job và không tải hàng loạt.
 - Chỉ chuẩn bị tệp sau khi người dùng chọn định dạng và nhấn tải; không tải sẵn mọi chất lượng.
 - Lấy chất lượng nguồn cung cấp, có thể ghép hình và tiếng bằng chế độ copy nếu tương thích. Không tự tạo chất lượng cao hơn nguồn.
 - Theo dõi tác vụ, hủy tác vụ, hết hạn phiên, dọn tệp tự động và giới hạn tài nguyên.
 - Banner/hộp tài trợ, mở link quảng cáo khi người dùng chủ động nhấn, quản trị chiến dịch, số liệu hiển thị/nhấp.
 - Bổ sung theo chủ31/10/2026: trang ủng hộ tự nguyện và tab quản trị cạnh Quảng cáo để cấu hình lời kêu gọi, mã QR và thông tin nhận ủng hộ; không chặn luồng tải.
 - Trang hướng dẫn, thông tin quyền riêng tư, điều khoản và kênh báo cáo nội dung. Nội dung liên hệ thực tế cấu hình bởi chủ website.
+- Bổ sung theo chủ03/11/2026: trang góp ý/báo lỗi/đề xuất và hộp thư riêng trong quản trị, lưu PostgreSQL, chỉ admin đọc/xử lý/xóa. Email người gửi tùy chọn; chưa tích hợp gửi mail tự động. [Phạm vi và nghiệm thu](docs/tasks/USER_FEEDBACK_INBOX_20261103.md).
 
 ### Chưa làm trong MVP
 

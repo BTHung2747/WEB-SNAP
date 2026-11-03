@@ -10,6 +10,7 @@ export default function Legal({ page, session }: { page: string; session: Sessio
     privacy: {
       title: 'Quyền riêng tư',
       sections: [
+        ['Góp ý của bạn', 'Nội dung, tên và email bạn tự nguyện để lại trong trang góp ý chỉ dành cho quản trị để xử lý hoặc liên hệ. Không lưu IP trong thư. Hộp thư giữ tối đa 1.000 thư trong 90 ngày; thư quá hạn được xóa khi có thư mới hoặc quản trị mở danh sách. Quản trị có thể xóa sớm hơn. Không có email tự động; đừng gửi mật khẩu, cookie hoặc thông tin nhạy cảm. Bản sao lưu vận hành có thể còn dữ liệu đến khi được thay thế.'],
         [
           'Phiên tải của bạn',
           'Cookie HttpOnly giữ quyền sở hữu tác vụ. Chúng tôi lưu metadata tác vụ, trạng thái và số byte cần thiết để xử lý và dọn tệp. Không yêu cầu cookie tài khoản mạng xã hội.',

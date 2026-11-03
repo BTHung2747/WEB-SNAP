@@ -9,6 +9,7 @@ import { performance } from 'node:perf_hooks';
 import { ProxyPhase, ProxyProofError, SourceTransfer, previewTransfer, proxyFinishObservation } from './proxy-phase';
 import { shortTikTok, requireShortEnabled, shortTransfer } from '../../../packages/shared/src/tiktok-short';
 import { videoPostId, videoLimits, requireVideoEnabled, videoTransfer } from '../../../packages/shared/src/tiktok-video';
+import { isAudioId, audioLimits, selectedAudio } from '../../../packages/shared/src/audio';
 export async function runAdapter(
   id: string,
   phase: string,
@@ -23,6 +24,7 @@ export async function runAdapter(
   if (short) { requireShortEnabled(l.enabledPlatforms); l = videoLimits(l); if (phase !== 'analyze') throw new AppError('FORMAT_UNAVAILABLE'); }
   if (photo) { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
   if (video) { requireVideoEnabled(l.enabledPlatforms); l = videoLimits(l); }
+  if (phase==='prepare'&&isAudioId(format)) l=audioLimits(l);
   const absoluteEnd = performance.now() + (phase === 'analyze' ? l.analyzeTimeout : l.prepareTimeout) * 1000;
   let transfer: SourceTransfer | undefined;
   if (short) transfer = shortTransfer(short);
@@ -35,7 +37,8 @@ export async function runAdapter(
       ]);
       if (!current || current.workerToken !== token || current.cancelRequested || ownerExpired(current) ||
           current.state !== 'preparing' || current.sourceUrl !== url || current.formatId !== format) throw new AppError('JOB_EXPIRED');
-      transfer = videoTransfer(current.items,format || '',videoPostId(url)!);
+      if(isAudioId(format)) selectedAudio(current.items,format,'tiktok',videoPostId(url)!);
+      else transfer = videoTransfer(current.items,format || '',videoPostId(url)!);
     } finally { if (timer) clearTimeout(timer); }
   }
   let proxyPhase: ProxyPhase | undefined;
@@ -233,21 +236,32 @@ export async function runAdapter(
           console.log(JSON.stringify({ event: 'proxy_phase_gate', id, phase, accepted: true, connections }));
         }
         if(previews) {
+          let cacheStage='OPENING',cacheCode='UNKNOWN';
           try {
             await optionalOpening;
+            cacheStage='ELIGIBILITY';
             if(optionalPhase && !stopped && performance.now()<absoluteEnd) {
+              cacheStage='FINISH';
               const connections=await optionalPhase.finish(()=>stopped);
               // No-overwrite publication only after native exit0/group reap and
               // the independent preview proof. Public API never reads pending.
+              cacheStage='PENDING_STAT';
               const pending=filePath(`${id}/previews.pending.json`),s=await lstat(pending);
-              if(!s.isFile()||s.isSymbolicLink()) throw new Error('PREVIEW_INDEX');
-              await link(pending,filePath(`${id}/previews.json`));await unlink(pending);
+              if(!s.isFile()||s.isSymbolicLink()) {cacheCode='INVALID_PENDING';throw new Error();}
+              cacheStage='LINK';await link(pending,filePath(`${id}/previews.json`));
+              cacheStage='UNLINK';await unlink(pending);
               optionalAccepted=true;
               console.log(JSON.stringify({event:'preview_phase_gate',id,accepted:true,connections}));
+            } else cacheCode=!optionalPhase?'NO_OPTIONAL_PHASE':stopped?'STOPPED':'DEADLINE';
+          } catch(error) {
+            if(cacheCode!=='INVALID_PENDING') {
+              const code=(error as NodeJS.ErrnoException)?.code;
+              cacheCode=typeof code==='string'&&['ENOENT','EEXIST','EACCES','EPERM','EIO','ELOOP'].includes(code)?code:
+                error instanceof ProxyProofError&&['CONFIG','OPEN','MISMATCH','REJECTED','TIMEOUT','CANCELLED','CHANNEL','OVERFLOW'].includes(error.reason)?'PROOF_'+error.reason:'UNKNOWN';
             }
-          } catch { /* Optional rejection preserves valid metadata, never proof bypass. */ }
+          }
           finally {
-            if(!optionalAccepted) {await abortOptional();await discardPreviews();console.log(JSON.stringify({event:'preview_phase_gate',id,accepted:false}));}
+            if(!optionalAccepted) {await abortOptional();await discardPreviews();try{console.log(JSON.stringify({event:'preview_phase_gate',id,accepted:false,stage:cacheStage,code:cacheCode}));}catch{/* Diagnostic failure cannot reject otherwise valid metadata. */}}
           }
         }
         if (stopped || performance.now() >= absoluteEnd) throw new AppError(stopped ? reason : 'SOURCE_TIMEOUT');

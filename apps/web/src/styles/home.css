@@ -148,3 +148,21 @@
   .balanced-quality,.balanced-photo-info{margin-top:20px}
   .balanced-controls{margin-top:16px;padding-top:16px}
 }
+.photo-dialog{width:min(960px,calc(100% - 40px))}
+.album-heading{padding-right:48px}
+.album-heading h3{font-size:22px;line-height:1.4;margin:0;overflow-wrap:anywhere}
+.album-heading p{color:var(--muted);font-size:13px;margin:6px 0 0}
+.album-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:18px 0 22px}
+.album-photo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:start}
+.album-photo-card{min-width:0;border:1px solid var(--line);border-radius:var(--radius-surface);padding:8px;background:var(--surface)}
+.album-photo-card:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.album-photo-card.is-selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.album-thumbnail{aspect-ratio:1;display:grid;place-items:center;background:var(--raised);border-radius:var(--radius-control);overflow:hidden}
+.album-thumbnail .media-preview{width:100%;height:100%;min-height:0;aspect-ratio:1}
+.album-thumbnail .media-preview img{width:100%;height:100%;object-fit:contain}
+.album-image-caption{font-size:11px;color:var(--muted);line-height:1.5;margin:8px 0;overflow-wrap:anywhere}
+.album-photo-card .balanced-action{width:100%;font-size:12px;padding:10px 6px}
+.balanced-audio-action{background:var(--surface);color:var(--accent);border:1px solid var(--accent)}
+@media(max-width:760px){.album-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.album-heading h3{font-size:18px}}
+@media(max-width:340px){.album-photo-grid{gap:8px}.album-photo-card{padding:6px}.album-image-caption{font-size:10px}}
+@media(max-width:400px){.album-photo-card .balanced-action svg{display:none}}

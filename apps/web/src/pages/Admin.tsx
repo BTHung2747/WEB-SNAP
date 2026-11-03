@@ -3,6 +3,7 @@ import { api, ApiError } from '../lib/api';
 import { names } from '../lib/platforms';
 import type { Session } from '../types';
 import AdminSupport from '../components/AdminSupport';
+import AdminFeedback from '../components/AdminFeedback';
 type AdStatistics = { window: { from: string; to: string; timezone: 'UTC' }; rows: { campaignId: string; title: string; impressions: number; clicks: number; ctrPercent: number | null }[] };
 export default function Admin({ session }: { session: Session }) {
   const [logged, setLogged] = useState(false);
@@ -207,6 +208,7 @@ export default function Admin({ session }: { session: Session }) {
               ['dashboard', 'Tổng quan'],
               ['campaigns', 'Quảng cáo'],
               ['support', 'Ủng hộ'],
+              ['feedback', 'Phản hồi'],
               ['settings', 'Cấu hình'],
             ].map(([key, label]) => (
               <button
@@ -231,7 +233,7 @@ export default function Admin({ session }: { session: Session }) {
       <div className="admin-heading">
         <div>
           <span className="admin-section-label">Không gian quản trị</span>
-          <h1>{logged ? ({ dashboard: 'Tổng quan hoạt động', campaigns: 'Chiến dịch tài trợ', support: 'Thiết lập ủng hộ', settings: 'Cấu hình hệ thống' }[tab] || 'Quản lý WED SNAP') : 'Quản lý WED SNAP'}</h1>
+          <h1>{logged ? ({ dashboard: 'Tổng quan hoạt động', campaigns: 'Chiến dịch tài trợ', support: 'Thiết lập ủng hộ', feedback: 'Phản hồi từ người dùng', settings: 'Cấu hình hệ thống' }[tab] || 'Quản lý WED SNAP') : 'Quản lý WED SNAP'}</h1>
           <p className="admin-subtitle">{logged ? 'Theo dõi tác vụ, quản lý tài trợ và cấu hình vận hành.' : 'Đăng nhập để quản lý hoạt động của hệ thống.'}</p>
         </div>
         {logged && (
@@ -255,6 +257,7 @@ export default function Admin({ session }: { session: Session }) {
           {notice}
         </p>
       )}
+      {logged && tab === 'feedback' && <AdminFeedback csrf={session.csrf} onAuthExpired={() => {clearPrivate(); setError('Phiên quản trị đã hết hạn. Vui lòng đăng nhập lại.');}} />}
       {!logged ? (
         <div className="admin-login-layout">
         <aside className="admin-login-intro">

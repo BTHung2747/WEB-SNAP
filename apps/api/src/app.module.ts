@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { FeedbackController } from './controllers/feedback.controller';
+import { FeedbackService } from './services/feedback.service';
 import { AdminController } from './controllers/admin.controller';
 import { AdsController } from './controllers/ads.controller';
 import { DownloadsController } from './controllers/downloads.controller';
@@ -14,6 +16,7 @@ import { SupportService } from './services/support.service';
 import { SupportUploadGuard,SupportUploadInterceptor } from './security/support-upload';
 @Module({
   controllers: [
+    FeedbackController,
     SessionController,
     JobsController,
     DownloadsController,
@@ -21,6 +24,6 @@ import { SupportUploadGuard,SupportUploadInterceptor } from './security/support-
     AdminController,
     SupportController,
   ],
-  providers: [SessionService, JobsService, DownloadsService, AdsService, AdminService,SupportService,SupportUploadGuard,SupportUploadInterceptor],
+  providers: [FeedbackService, SessionService, JobsService, DownloadsService, AdsService, AdminService,SupportService,SupportUploadGuard,SupportUploadInterceptor],
 })
 export class AppModule {}

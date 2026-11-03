@@ -171,6 +171,7 @@ services:
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:?Set the target DNS hostname}
       ACME_EMAIL: ${ACME_EMAIL:?Set the certificate contact}
+      ADMIN_PATH: ${ADMIN_PATH:?Set a private admin entry}
     ports: ['80:8080/tcp', '443:8443/tcp']
     networks: [proxy_api, frontend]
     volumes: [caddy_data:/data, caddy_config:/config]

@@ -18,14 +18,19 @@ if len(sys.argv)>=4:
             from tiktok.adapter import main as tiktok_main
         sys.exit(tiktok_main(sys.argv[1:]))
 import yt_dlp
+import time,copy
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media/src'))
 from video_policy import full_hd
+from audio_media import choice as audio_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError, INPUT_CAP as AUDIO_INPUT, OUTPUT_CAP as AUDIO_OUTPUT
 class Rejected(Exception):pass
 phase,url,folder=sys.argv[1:4]
 folder=pathlib.Path(folder);folder.mkdir(parents=True,exist_ok=True)
 max_input=int(os.environ.get('ADAPTER_MAX_INPUT','262144000'))
 max_output=int(os.environ.get('ADAPTER_MAX_OUTPUT','209715200'))
 duration_limit=int(os.environ.get('ADAPTER_MAX_DURATION','600'))
+audio_requested=phase=='prepare' and len(sys.argv)>4 and AUDIO_ID.fullmatch(sys.argv[4])
+if audio_requested:max_input=min(max_input,AUDIO_INPUT);max_output=min(max_output,AUDIO_OUTPUT)
+phase_deadline=time.monotonic()+int(os.environ.get('ADAPTER_ANALYZE_TIMEOUT','30') if phase=='analyze' else os.environ.get('ADAPTER_PREPARE_TIMEOUT','180'))
 counts={}
 network_bytes=0
 class BoundedYoutubeDL(yt_dlp.YoutubeDL):
@@ -55,7 +60,7 @@ def hook(d):
     total=sum(f.stat().st_size for f in folder.rglob('*') if f.is_file())
     if total>max_input+max_output:raise Rejected('LIMIT_EXCEEDED')
 opts={'proxy':os.environ.get('MEDIA_PROXY','http://egress:8888'),'quiet':True,'noprogress':True,'no_warnings':True,'noplaylist':True,'cachedir':False,'socket_timeout':10,'retries':1,'fragment_retries':1,'extractor_retries':0,'js_runtimes':{'node':{}},'remote_components':[], 'max_filesize':max_input,'progress_hooks':[hook], 'concurrent_fragment_downloads':1,'hls_prefer_native':True,'external_downloader':{'default':'native'},'outtmpl':str(folder/'media.%(ext)s'),'merge_output_format':'mp4','overwrites':False}
-if phase=='prepare':opts['format']=sys.argv[4]
+if phase=='prepare':opts['format']='best' if audio_requested else sys.argv[4]
 def valid(info):
     if info.get('_type') in ('playlist','multi_video') or info.get('is_live') or info.get('live_status') in ('is_live','is_upcoming'):raise Rejected('UNSUPPORTED_CONTENT')
     if info.get('availability') in ('private','premium_only','subscriber_only','needs_auth'):raise Rejected('AUTH_REQUIRED')
@@ -93,7 +98,10 @@ def formats(info):
     return rows
 try:
     with BoundedYoutubeDL(opts) as ydl:
-        info=ydl.extract_info(url,download=False);valid(info);rows=formats(info)
+        info=ydl.extract_info(url,download=False,process=False) if audio_requested else ydl.extract_info(url,download=False)
+        valid(info);rows=formats(info)
+        audio_format,audio_source=audio_choice(info.get('formats') or [],'youtube',str(info.get('id') or ''),info['duration'])
+        if audio_format:rows.append(audio_format)
         if not rows:raise Rejected('FORMAT_UNAVAILABLE')
         if phase=='analyze':
             # Preview is downloaded through the same SSRF-controlled proxy; no signed URL is exposed.
@@ -104,6 +112,22 @@ try:
                     if len(data)<=2097152 and (data.startswith(b'\xff\xd8\xff') or data.startswith(b'\x89PNG\r\n\x1a\n')):(folder/'preview').write_bytes(data)
                 except Exception:pass
             print(json.dumps({'title':str(info.get('title','Video'))[:300],'duration':info['duration'],'formats':rows},ensure_ascii=False))
+        elif audio_requested:
+            if not audio_format or sys.argv[4]!=audio_format['id']:raise Rejected('FORMAT_UNAVAILABLE')
+            source=folder/('audio-source.'+audio_source['ext'])
+            auxiliary=[folder/(source.name+suffix) for suffix in ('','.part','.ytdl')]
+            if any(os.path.lexists(p) for p in auxiliary):raise Rejected('INVALID_ASSET_PATH')
+            try:
+                ydl.params['format']=str(audio_source['format_id']);ydl.params['outtmpl']={'default':str(source)}
+                ydl.params['max_filesize']=max_input
+                fresh=copy.deepcopy(info);fresh['formats']=[copy.deepcopy(audio_source)]
+                ydl.process_ie_result(fresh,download=True)
+                if time.monotonic()>=phase_deadline:raise Rejected('SOURCE_TIMEOUT')
+                result=encode_audio(source,folder,audio_format,network_bytes,phase_deadline,max_output=max_output)
+                print(json.dumps(result,ensure_ascii=False))
+            finally:
+                for p in auxiliary:
+                    if p.is_file() and not p.is_symlink():p.unlink()
         else:
             selected=sys.argv[4]
             if selected not in [r['id'] for r in rows]:raise Rejected('FORMAT_UNAVAILABLE')
@@ -125,6 +149,6 @@ try:
             print(json.dumps({'file':'media.mp4','size':files[0].stat().st_size,'inputBytes':network_bytes}))
 except Exception as e:
     message=str(e).lower()
-    code=str(e) if isinstance(e,Rejected) else ('AUTH_REQUIRED' if any(s in message for s in ['sign in','login','log in','private']) else 'FORMAT_UNAVAILABLE' if 'requested format is not available' in message else 'SOURCE_TIMEOUT' if 'timed out' in message else 'LIMIT_EXCEEDED' if 'filesize' in message else 'CONTENT_UNAVAILABLE')
+    code=str(e) if isinstance(e,(Rejected,AudioError)) and str(e) in ('AUTH_REQUIRED','FORMAT_UNAVAILABLE','SOURCE_TIMEOUT','LIMIT_EXCEEDED','CONTENT_UNAVAILABLE','INVALID_ASSET_PATH') else ('AUTH_REQUIRED' if any(s in message for s in ['sign in','login','log in','private']) else 'FORMAT_UNAVAILABLE' if 'requested format is not available' in message else 'SOURCE_TIMEOUT' if 'timed out' in message else 'LIMIT_EXCEEDED' if 'filesize' in message else 'CONTENT_UNAVAILABLE')
     # Do not print extractor exception: it can contain a signed URL or headers.
     print(json.dumps({'error':code}));sys.exit(1)

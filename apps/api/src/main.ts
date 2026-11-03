@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { SafeErrors } from './common';
 import { createOpenApiDocument } from './openapi';
 import { clientIdentityMiddleware } from './security/client-ip';
+import { feedbackBody } from './security/feedback-body';
 async function main() {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   // Keep Express forwarding disabled; rate identity is verified per request.
@@ -15,6 +16,8 @@ async function main() {
   app.use(clientIdentityMiddleware());
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cookieParser());
+  app.use('/api/v1/feedback', feedbackBody);
+  app.use('/api/v1/admin/feedback', feedbackBody);
   app.useGlobalFilters(new SafeErrors());
   const doc = createOpenApiDocument(app);
   SwaggerModule.setup('api/docs', app, doc);

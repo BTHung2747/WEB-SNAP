@@ -35,7 +35,14 @@ try {
         return {index: i + 1, url: photo.url, width, height};
     });
     // Private pipe only: the core consumes this bounded packet in RAM, never a public log.
-    const packet = JSON.stringify({id, type: 'photo', images});
+    const caption = typeof m.caption === 'string' ? m.caption.replace(/https?:\/\/\S+/g, '[url-redacted]').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 300) : '';
+    let audio = null;
+    if (typeof result.urls === 'string' && /^[0-9]{5,24}$/.test(String(m.music?.id || '')) && Number.isFinite(m.music?.duration) && m.music.duration > 0 && m.music.duration <= 600) {
+        const url = new URL(result.urls);
+        if (url.protocol === 'https:' && url.hostname && !url.username && !url.password && !url.hash && (!url.port || url.port === '443'))
+            audio = {id: String(m.music.id), duration: m.music.duration, url: result.urls, ext: result.bestAudio === 'mp3' ? 'mp3' : 'm4a'};
+    }
+    const packet = JSON.stringify({id, type: 'photo', images, caption, audio});
     if (Buffer.byteLength(packet) > 128 * 1024) throw new Error();
     process.stdout.write(packet);
 } catch {

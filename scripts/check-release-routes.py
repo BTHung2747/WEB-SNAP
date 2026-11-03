@@ -1,5 +1,7 @@
 """CI-only HTTP contract check: shared none-netns loopback, no live API/source."""
 import http.client
+import os
+import re
 from html.parser import HTMLParser
 import json
 import signal
@@ -10,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 HOST = 'release.example.invalid'
 CANONICAL = 'https://savlivo.online'
-PUBLIC = ('/', '/privacy', '/terms', '/report', '/ung-ho')
+PUBLIC = ('/', '/privacy', '/terms', '/report', '/ung-ho', '/gop-y')
 MAX_BODY = 256 * 1024
 MAX_TOTAL = 2 * 1024 * 1024
 ERROR_CODES = frozenset(('DEADLINE', 'ENCODING', 'BODY_CAP', 'STATUS', 'CSP', 'MIME',
@@ -54,6 +56,9 @@ def require(ok, code):
 
 
 def run():
+    admin_path = os.environ.get('ADMIN_PATH', '')
+    if not re.fullmatch(r'/[a-z][a-z0-9-]{19,63}', admin_path) or re.match(r'/(admin|api|assets|brand|privacy|terms|report|ung-ho|gop-y)(-|$)', admin_path):
+        raise GateError('HTML_IDENTITY')
     deadline = time.monotonic() + 50
     total = 0
     http_requests = 0
@@ -96,7 +101,9 @@ def run():
             require(mime == 'text/html', 'MIME')
             head = Head()
             head.feed(body.decode('utf-8'))
-            require(head.canonicals == [CANONICAL + value] and 'WED SNAP' in head.text, 'HTML_IDENTITY')
+            require(head.canonicals == ([] if kind == 'ADMIN' else [CANONICAL + value]) and 'WED SNAP' in head.text, 'HTML_IDENTITY')
+            require((b'name="wed-snap-page" content="admin"' in body) == (kind == 'ADMIN'), 'HTML_IDENTITY')
+            if kind == 'PUBLIC': require(admin_path.encode() not in body, 'HTML_IDENTITY')
             require(('noindex' in headers.get('X-Robots-Tag', '').lower()) == (kind == 'ADMIN'), 'ROBOTS_HEADER')
         elif kind == 'PNG':
             require(mime == 'image/png' and body[:8] == b'\x89PNG\r\n\x1a\n' and len(body) >= 24, 'PNG')
@@ -116,6 +123,7 @@ def run():
             require(b'id="root"' not in body and b'savlivo.online' not in body, 'API_STATIC_FALLBACK')
         elif kind == 'MISSING':
             require(b'id="root"' not in body, 'MISSING_STATIC_FALLBACK')
+            require(not headers.get('Location'), 'LOCATION')
 
     try:
         ready = False
@@ -130,15 +138,16 @@ def run():
         require(ready, 'READINESS')
         for number, path in enumerate(PUBLIC):
             case('PUBLIC_' + str(number), path, 200, 'PUBLIC', path)
-        for number, path in enumerate(('/admin', '/admin/settings')):
-            case('ADMIN_' + str(number), path, 200, 'ADMIN', '/admin')
+        case('PRIVATE_ADMIN', admin_path, 200, 'ADMIN')
+        for number, path in enumerate(('/admin', '/admin/', '/admin/settings', '/admin.html', '/admin.html/')):
+            case('OLD_ADMIN_' + str(number), path, 404, 'MISSING')
         case('FAVICON', '/favicon.png', 200, 'PNG', (96, 96))
         case('MOBILE_ICON', '/apple-touch-icon.png', 200, 'PNG', (180, 180))
         case('SHARE_IMAGE', '/brand/share.png', 200, 'PNG', (1200, 630))
         case('BRAND_SVG', '/brand/mark.svg', 200, 'SVG')
         case('ROBOTS', '/robots.txt', 200, 'ROBOTS')
         case('SITEMAP', '/sitemap.xml', 200, 'SITEMAP')
-        for number, (path, target) in enumerate((('/index.html', '/'), ('/privacy/', '/privacy'), ('/terms/', '/terms'), ('/report/', '/report'), ('/ung-ho/', '/ung-ho'))):
+        for number, (path, target) in enumerate((('/index.html', '/'), ('/privacy/', '/privacy'), ('/terms/', '/terms'), ('/report/', '/report'), ('/ung-ho/', '/ung-ho'), ('/gop-y/', '/gop-y'))):
             case('REDIRECT_' + str(number), path, 308, 'REDIRECT', target)
         for number, path in enumerate(('/missing-release-page', '/assets/missing-release.js', '/brand/missing-release.png')):
             case('MISSING_' + str(number), path, 404, 'MISSING')
