@@ -388,6 +388,8 @@ client/source mới. Xem README6.13/TEST_REPORT cho lab guards/lệnh/doubles.
 
 Lỗi: `{error:{code}}`. 400 INVALID_URL/UNSUPPORTED_PLATFORM/UNSUPPORTED_CONTENT/FORMAT_UNAVAILABLE/INVALID_REQUEST; 403 SESSION_REQUIRED/CSRF_INVALID/ADMIN_REQUIRED/LOGIN_FAILED; 404 JOB_NOT_FOUND; 409 IDEMPOTENCY_CONFLICT; 410 JOB_EXPIRED; 416 INVALID_RANGE; 429 RATE_LIMITED/QUEUE_FULL; 503 CAPACITY_UNAVAILABLE. AUTH_REQUIRED/CONTENT_UNAVAILABLE/LIMIT_EXCEEDED/SOURCE_TIMEOUT/WORKER_INTERRUPTED xuất hiện trên trạng thái tác vụ failed. Không lộ stack, đĩa, cookie/header nguồn. Log worker chỉ phase/id/code/byte.
 
+Job YouTube trả `errorCode: YOUTUBE_BOT_VERIFICATION_REQUIRED` khi bộ trích xuất nhận thông báo xác minh bot từ YouTube. Các yêu cầu đăng nhập hoặc giới hạn truy cập thông thường dùng `AUTH_REQUIRED`.
+
 Download policy: tệp MP4 nguồn gộp sẵn hoặc H.264 + AAC qua HTTPS, FFmpeg copy ghép local. Không hỗ trợ HLS/DASH manifest tải bằng FFmpeg, DRM, livestream hoặc conversion. URL source được phân tích lại lúc prepare; format không còn thì lỗi, không fallback vô hạn. Không lưu signed media URLs trong DB. Source post URL bị xóa khi job ready/thất bại/hết hạn.
 
 ### Retention worker metrics34 — không đổi hợp đồng HTTP

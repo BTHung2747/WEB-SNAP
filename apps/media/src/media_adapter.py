@@ -23,12 +23,23 @@ sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media
 from video_policy import full_hd
 from audio_media import choice as audio_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError, INPUT_CAP as AUDIO_INPUT, OUTPUT_CAP as AUDIO_OUTPUT
 class Rejected(Exception):pass
+def youtube_error_cause(error):
+    from yt_dlp.utils import DownloadError
+    for _ in range(2):
+        if type(error) is not DownloadError:
+            break
+        wrapped = getattr(error, 'exc_info', None)
+        if type(wrapped) is not tuple or len(wrapped) != 3 or not isinstance(wrapped[1], Exception):
+            break
+        error = wrapped[1]
+    return error
+
 def youtube_message_reason(error):
-    """Recognize the pinned extractor's sign-in branch, never infer bot/IP state."""
+    """Classify the pinned extractor's message without inferring why access was challenged."""
     from yt_dlp.utils import ExtractorError
     import re
-    if type(error) is not ExtractorError or error.expected is not True:return 'UNKNOWN'
-    text=error.orig_msg
+    if type(error) is not ExtractorError or getattr(error, 'expected', False) is not True:return 'UNKNOWN'
+    text=getattr(error, 'orig_msg', None)
     if type(text) is not str or len(text)>4096:return 'UNKNOWN'
     # _video.py appends _base.py's login hint; common.py supplies its first part.
     # Require that exact construction, not free-form exception keywords.
@@ -38,9 +49,12 @@ def youtube_message_reason(error):
     suffix='. '+hint
     if not text.endswith(suffix):return 'UNKNOWN'
     source=text[:-len(suffix)]
+    first_sentence = source.split('. ', 1)[0]
+    if re.fullmatch(r"sign in to confirm you['’]re not a bot", first_sentence, re.I | re.ASCII):
+        return 'SOURCE_BOT_VERIFICATION_MESSAGE'
     if not re.search(r'\bsign in\b',source,re.I):return 'UNKNOWN'
     return 'SOURCE_AGE_MESSAGE' if re.search(r'\bconfirm your age\b',source,re.I) else 'SOURCE_SIGN_IN_MESSAGE'
-def youtube_diagnostic(folder, phase, gate, reason, error):
+def youtube_diagnostic(folder, phase, gate, reason, error, cause):
     """One private numeric/enum receipt. Never serialize exception text or metadata."""
     try:
         from yt_dlp.utils import DownloadError,ExtractorError,GeoRestrictedError,UnavailableVideoError
@@ -48,13 +62,8 @@ def youtube_diagnostic(folder, phase, gate, reason, error):
         root=pathlib.Path(os.environ.get('MEDIA_ROOT','/media'))
         if phase not in ('analyze','prepare') or folder.parent!=root or root.is_symlink() or folder.is_symlink() or str(uuid.UUID(folder.name))!=folder.name:return
         classes={DownloadError:'DownloadError',ExtractorError:'ExtractorError',GeoRestrictedError:'GeoRestrictedError',UnavailableVideoError:'UnavailableVideoError',Rejected:'Rejected',AudioError:'AudioError'}
-        outer=classes.get(type(error),'UNKNOWN');inner=error
-        for _ in range(2):
-            if type(inner) is DownloadError and type(inner.exc_info) is tuple and len(inner.exc_info)==3 and isinstance(inner.exc_info[1],Exception):inner=inner.exc_info[1]
-            else:break
-        if type(inner) is GeoRestrictedError and reason=='UNKNOWN':reason='GEO_RESTRICTED'
-        elif reason=='UNKNOWN':reason=youtube_message_reason(inner)
-        row=dict(version=1,phase=phase,gate=gate,reason=reason,exceptionClass=outer,causeClass=classes.get(type(inner),'UNKNOWN'))
+        if type(cause) is GeoRestrictedError and reason=='UNKNOWN':reason='GEO_RESTRICTED'
+        row=dict(version=1,phase=phase,gate=gate,reason=reason,exceptionClass=classes.get(type(error),'UNKNOWN'),causeClass=classes.get(type(cause),'UNKNOWN'))
         data=json.dumps(row,separators=(',',':'),allow_nan=False).encode()
         if len(data)>1024:return
         dfd=os.open(folder,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
@@ -196,9 +205,12 @@ try:
             if not math.isfinite(probed_duration) or probed_duration>duration_limit:raise Rejected('LIMIT_EXCEEDED')
             print(json.dumps({'file':'media.mp4','size':files[0].stat().st_size,'inputBytes':network_bytes}))
 except Exception as e:
-    try:youtube_diagnostic(folder,phase,diagnostic_gate,diagnostic_reason,e)
-    except Exception:pass
+    cause = youtube_error_cause(e)
+    source_reason = youtube_message_reason(cause) if diagnostic_reason == 'UNKNOWN' else diagnostic_reason
+    youtube_diagnostic(folder, phase, diagnostic_gate, source_reason, e, cause)
     message=str(e).lower()
     code=str(e) if isinstance(e,(Rejected,AudioError)) and str(e) in ('AUTH_REQUIRED','FORMAT_UNAVAILABLE','SOURCE_TIMEOUT','LIMIT_EXCEEDED','CONTENT_UNAVAILABLE','INVALID_ASSET_PATH') else ('AUTH_REQUIRED' if any(s in message for s in ['sign in','login','log in','private']) else 'FORMAT_UNAVAILABLE' if 'requested format is not available' in message else 'SOURCE_TIMEOUT' if 'timed out' in message else 'LIMIT_EXCEEDED' if 'filesize' in message else 'CONTENT_UNAVAILABLE')
+    if source_reason == 'SOURCE_BOT_VERIFICATION_MESSAGE':
+        code = 'YOUTUBE_BOT_VERIFICATION_REQUIRED'
     # Do not print extractor exception: it can contain a signed URL or headers.
     print(json.dumps({'error':code}));sys.exit(1)

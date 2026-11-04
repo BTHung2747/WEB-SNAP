@@ -9,6 +9,7 @@ export const messages: Record<string, string> = {
   UNSUPPORTED_CONTENT: 'Loại nội dung này chưa được hỗ trợ.',
   CONTENT_UNAVAILABLE: 'Không lấy được nội dung. Bài có thể đã xóa hoặc nguồn đang chặn truy cập.',
   AUTH_REQUIRED: 'Nội dung cần đăng nhập hoặc có giới hạn truy cập. Chỉ hỗ trợ bài công khai.',
+  YOUTUBE_BOT_VERIFICATION_REQUIRED: 'YouTube đang yêu cầu xác minh kết nối của WED SNAP. Vui lòng thử lại sau.',
   FORMAT_UNAVAILABLE: 'Định dạng này không còn khả dụng. Hãy phân tích lại link.',
   RATE_LIMITED: 'Bạn gửi yêu cầu quá nhanh. Vui lòng thử lại sau một phút.',
   QUEUE_FULL: 'Đang có nhiều yêu cầu. Vui lòng thử lại sau.',

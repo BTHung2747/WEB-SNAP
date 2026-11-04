@@ -322,7 +322,7 @@ export default function Home({ session }: { session: Session }) {
                   </div>
                 )}
                 {started && <p className="started"><Icon name="check" /> Đã bắt đầu yêu cầu tải. Kiểm tra danh sách tải của trình duyệt.</p>}
-                {['expired', 'cancelled', 'failed'].includes(state) && (
+                {['expired', 'cancelled', 'failed'].includes(state) && job?.errorCode !== 'YOUTUBE_BOT_VERIFICATION_REQUIRED' && (
                   <p className="muted terminal-state">
                     {stateLabels[state]}. Bạn có thể phân tích lại link để tiếp tục.
                   </p>

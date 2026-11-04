@@ -12,7 +12,7 @@ const preview=z.object({version:z.literal(1),outcome:z.enum(['SKIPPED','PENDING'
 const exceptionClass=z.enum(['DownloadError','ExtractorError','GeoRestrictedError','UnavailableVideoError','Rejected','AudioError','UNKNOWN']);
 const youtube=z.object({version:z.literal(1),phase:z.enum(['analyze','prepare']),
   gate:z.enum(['EXTRACTOR','METADATA','METADATA_AUTH','METADATA_AGE','PROCESSING']),
-  reason:z.enum(['PRIVATE','PREMIUM_ONLY','SUBSCRIBER_ONLY','NEEDS_AUTH','AGE_RESTRICTED','GEO_RESTRICTED','SOURCE_SIGN_IN_MESSAGE','SOURCE_AGE_MESSAGE','UNKNOWN']),exceptionClass,causeClass:exceptionClass}).strict();
+  reason:z.enum(['PRIVATE','PREMIUM_ONLY','SUBSCRIBER_ONLY','NEEDS_AUTH','AGE_RESTRICTED','GEO_RESTRICTED','SOURCE_SIGN_IN_MESSAGE','SOURCE_AGE_MESSAGE','SOURCE_BOT_VERIFICATION_MESSAGE','UNKNOWN']),exceptionClass,causeClass:exceptionClass}).strict();
 export async function mirrorSourceDiagnostics(root:string,id:string,phase:string,kind:'preview'|'youtube',emit:(row:unknown)=>void=row=>console.log(JSON.stringify(row))) {
   let directory:Awaited<ReturnType<typeof open>>|undefined,file:Awaited<ReturnType<typeof open>>|undefined;
   try {
