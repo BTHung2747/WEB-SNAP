@@ -146,12 +146,13 @@ def execute(phase,url,folder,selected=None,session_factory=None,*,analyze_deadli
                 fresh=copy.deepcopy(info);fresh['formats']=[copy.deepcopy(f)]
                 ydl.process_ie_result(fresh,download=True);budget.check();output_guard(None)
         if donor:
-            copy_pair(folder/'source-video.mp4',folder/'source-audio.mp4',names[0],duration,format,donor,operations,max_output,max_duration)
+            copy_pair(folder/'source-video.mp4',folder/'source-audio.mp4',names[0],duration,format,donor,operations,max_output,max_duration,
+                whole_second_metadata=True)
         with operations.step('OUTPUT_CHECK',operations.timeout(180)):
             if not names[0].is_file() or names[0].is_symlink() or names[0].stat().st_size>max_output:
                 raise Rejected('LIMIT_EXCEEDED')
         inspected=inspect_file(names[0],duration,operations,max_duration=max_duration,
-            expected_vcodec=format['vcodec'],expected_acodec=donor['acodec'] if donor else format['acodec']);budget.check()
+            expected_vcodec=format['vcodec'],expected_acodec=donor['acodec'] if donor else format['acodec'],whole_second_metadata=True);budget.check()
         if donor:
             kinds=[s.get('codec_type') for s in inspected['ffprobe'].get('streams',[])]
             if kinds.count('video')!=1 or kinds.count('audio')!=1:raise Rejected('FORMAT_UNAVAILABLE')

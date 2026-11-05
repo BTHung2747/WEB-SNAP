@@ -13,7 +13,19 @@ def duration_tolerance(expected):
     # 5% bounded0.15..0.75s: frame/AAC/mux granularity, not multi-second truncation.
     # Short clips get a narrow bound; uncertain metadata can safely fail rather than enlarge tolerance.
     return min(.75,max(.15,.05*expected))
-def inspect_file(file,expected_duration,operations=None,max_duration=600,*,expected_vcodec='h264',expected_acodec=None):
+
+def matches_metadata_duration(durations, expected, *, whole_second_metadata=False):
+    tolerance = duration_tolerance(expected)
+    if all(abs(duration - expected) <= tolerance for duration in durations):
+        return True
+    # TikTok's web metadata can omit the fractional second. All native durations
+    # must then be in that same second and agree within the normal mux tolerance.
+    return (whole_second_metadata and type(expected) is int
+            and all(expected <= duration < expected + 1 for duration in durations)
+            and max(durations) - min(durations) <= tolerance)
+
+def inspect_file(file,expected_duration,operations=None,max_duration=600,*,expected_vcodec='h264',expected_acodec=None,
+                 whole_second_metadata=False):
     operations=operations or Operations(sink='file-operations.jsonl')
     file=pathlib.Path(file)
     if not isinstance(max_duration,(int,float)) or not math.isfinite(max_duration) or not 0<max_duration<=600:
@@ -26,16 +38,18 @@ def inspect_file(file,expected_duration,operations=None,max_duration=600,*,expec
     if probe.returncode:raise RuntimeError('FFPROBE_FAIL')
     with operations.step('CONTRACT',operations.timeout(10)):
         data=json.loads(probe.stdout);validate_contract(data,expected_duration,max_duration,
-            expected_vcodec=expected_vcodec,expected_acodec=expected_acodec)
+            expected_vcodec=expected_vcodec,expected_acodec=expected_acodec,whole_second_metadata=whole_second_metadata)
     fmt=data.get('format',{});streams=data.get('streams',[])
     duration=float(fmt['duration']);tolerance=duration_tolerance(expected_duration)
     video_durations=[float(s['duration']) for s in streams if s.get('codec_type')=='video' and s.get('codec_name')==video_codec(expected_vcodec)]
     operations.native('DECODE',['ffmpeg','-v','error','-i',str(file),'-f','null','-'],180,reserve=DECODE_RESERVE_SECONDS)
     return {'ffprobe':data,'container':'MP4_ISO_BMFF','decode':'PASS','expectedDuration':expected_duration,
             'containerDuration':duration,'videoDurations':video_durations,'maxDurationSeconds':max_duration,'durationToleranceSeconds':tolerance,
-            'durationPolicy':'min(0.75,max(0.15,0.05*expected)); seconds, absolute cap, no rounded delta'}
+            'durationPolicy':('min(0.75,max(0.15,0.05*expected)); seconds, absolute cap'
+                              + ('; matching native durations within the same whole second' if whole_second_metadata else '; no rounded delta'))}
 
-def validate_contract(data,expected_duration,max_duration=600,*,expected_vcodec='h264',expected_acodec=None):
+def validate_contract(data,expected_duration,max_duration=600,*,expected_vcodec='h264',expected_acodec=None,
+                      whole_second_metadata=False):
     fmt=data.get('format',{});streams=data.get('streams',[])
     names=set(fmt.get('format_name','').split(','));brand=fmt.get('tags',{}).get('major_brand','').strip().lower()
     # MOV/MP4 share demuxer names. A QuickTime qt brand is not accepted as an MP4 video.
@@ -55,18 +69,19 @@ def validate_contract(data,expected_duration,max_duration=600,*,expected_vcodec=
     if not isinstance(max_duration,(int,float)) or not math.isfinite(max_duration) or not 0<max_duration<=600:
         raise RuntimeError('DURATION_POLICY')
     if not math.isfinite(duration) or not 0<duration<=max_duration:raise RuntimeError('DURATION_POLICY')
-    tolerance=duration_tolerance(expected_duration)
     video_durations=[float(s.get('duration','nan')) for s in video]
     # The admin ceiling is independent of metadata/mux tolerance and may never be enlarged by it.
     if any(not math.isfinite(d) or not 0<d<=max_duration for d in video_durations):raise RuntimeError('DURATION_POLICY')
-    if abs(duration-expected_duration)>tolerance or any(abs(d-expected_duration)>tolerance for d in video_durations):
-        raise RuntimeError('FILE_METADATA_DURATION_MISMATCH')
+    audio_durations=[]
     if expected_acodec is not None:
         audio_durations=[float(s.get('duration','nan')) for s in audio]
         if any(not math.isfinite(d) or not 0<d<=max_duration for d in audio_durations):raise RuntimeError('DURATION_POLICY')
-        if any(abs(d-expected_duration)>tolerance for d in audio_durations):raise RuntimeError('FILE_METADATA_DURATION_MISMATCH')
+    if not matches_metadata_duration([duration,*video_durations,*audio_durations],expected_duration,
+                                     whole_second_metadata=whole_second_metadata):
+        raise RuntimeError('FILE_METADATA_DURATION_MISMATCH')
 
-def copy_pair(video_file,audio_file,output,expected_duration,video_format,audio_format,operations,max_output,max_duration):
+def copy_pair(video_file,audio_file,output,expected_duration,video_format,audio_format,operations,max_output,max_duration,*,
+              whole_second_metadata=False):
     probes=[]
     for file in (video_file,audio_file):
         probe=operations.native('FFPROBE',['ffprobe','-v','error','-show_entries',
@@ -76,7 +91,8 @@ def copy_pair(video_file,audio_file,output,expected_duration,video_format,audio_
     with operations.step('CONTRACT',operations.timeout(10)):
         target=[s for s in probes[0].get('streams',[]) if s.get('codec_type')=='video']
         donor=probes[1].get('streams',[])
-        validate_contract(probes[1],expected_duration,max_duration,expected_vcodec=audio_format['vcodec'],expected_acodec=audio_format['acodec'])
+        validate_contract(probes[1],expected_duration,max_duration,expected_vcodec=audio_format['vcodec'],expected_acodec=audio_format['acodec'],
+                          whole_second_metadata=whole_second_metadata)
         donor_video=[s for s in donor if s.get('codec_type')=='video']
         donor_audio=[s for s in donor if s.get('codec_type')=='audio']
         if len(donor_video)!=1 or len(donor_audio)!=1:raise RuntimeError('VIDEO_CODEC_POLICY')
@@ -85,11 +101,15 @@ def copy_pair(video_file,audio_file,output,expected_duration,video_format,audio_
         if any(target[0].get(k)!=video_format[k] for k in ('width','height')):raise RuntimeError('VIDEO_DIMENSION_POLICY')
         fmt=probes[0].get('format',{})
         if 'mp4' not in fmt.get('format_name','').split(',') or fmt.get('tags',{}).get('major_brand','').strip().lower() not in MP4_BRANDS:raise RuntimeError('MP4_CONTAINER_REQUIRED')
-        for stream in target+[s for s in donor if s.get('codec_type') in ('audio','video')]:
+        durations=[]
+        for stream in target+donor_video+donor_audio:
             start=float(stream.get('start_time','nan'));duration=float(stream.get('duration','nan'))
             # Refuse offset/edited timelines; copy does not silently retime or trim.
             if not math.isfinite(start) or abs(start)>.1:raise RuntimeError('TIMELINE_MISMATCH')
-            if not math.isfinite(duration) or not 0<duration<=max_duration or abs(duration-expected_duration)>duration_tolerance(expected_duration):raise RuntimeError('TIMELINE_MISMATCH')
+            if not math.isfinite(duration) or not 0<duration<=max_duration:raise RuntimeError('TIMELINE_MISMATCH')
+            durations.append(duration)
+        if not matches_metadata_duration(durations,expected_duration,whole_second_metadata=whole_second_metadata):
+            raise RuntimeError('TIMELINE_MISMATCH')
     operations.native('MUX',['ffmpeg','-v','error','-nostdin','-n','-protocol_whitelist','file',
         '-i',str(video_file),'-protocol_whitelist','file','-i',str(audio_file),
         '-map','0:v:0','-map','1:a:0','-c','copy','-fs',str(max_output),str(output)],180,reserve=DECODE_RESERVE_SECONDS)
