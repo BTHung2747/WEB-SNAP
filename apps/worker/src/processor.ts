@@ -19,6 +19,7 @@ import { photoPostId, photoLimits, requirePhotoEnabled, checkedPhotoMetadata, ch
 import { videoPostId, videoLimits, requireVideoEnabled, selectedVideo, checkedVideoFormats } from '../../../packages/shared/src/tiktok-video';
 import { shortTikTok, requireShortEnabled, checkedResolved } from '../../../packages/shared/src/tiktok-short';
 import { isAudioId, audioLimits, selectedAudio, checkedAudioFormats, primaryFormats, checkedAudioFile } from '../../../packages/shared/src/audio';
+import { facebookPostId, checkedFacebookResolved } from '../../../packages/shared/src/facebook';
 export async function processJob(queued: any) {
   const id = queued.data.id;
   const phase = queued.name;
@@ -99,24 +100,27 @@ export async function processJob(queued: any) {
     const { validateUrl } = await import('../../../packages/shared/src/core');
     validateUrl(j.sourceUrl);
     let photoId = photoPostId(j.sourceUrl);
-    const audioSelection=phase==='prepare'&&isAudioId(j.formatId)?selectedAudio(j.items,j.formatId!,j.platform,photoId||videoPostId(j.sourceUrl)||undefined):null;
+    const audioSelection=phase==='prepare'&&isAudioId(j.formatId)?selectedAudio(j.items,j.formatId!,j.platform,photoId||videoPostId(j.sourceUrl)||facebookPostId(j.sourceUrl)||undefined):null;
     const selection = !audioSelection&&photoId && phase === 'prepare' ? selectedPhoto(j.items, j.formatId || '', photoId) : null;
     const data = await runAdapter(id, phase, j.sourceUrl, j.formatId, l, token);
-    const resolved = shortTikTok(j.sourceUrl) ? checkedResolved(data.resolved) : null;
+    const resolved = shortTikTok(j.sourceUrl) ? checkedResolved(data.resolved) :
+      j.platform==='facebook' && phase==='analyze' ? checkedFacebookResolved(data.resolved,j.sourceUrl) : null;
     const canonicalUrl = resolved?.url || j.sourceUrl;
     if (resolved) {
       if (phase !== 'analyze') throw new AppError('FORMAT_UNAVAILABLE');
-      if (resolved.kind === 'photo') { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
-      else requireVideoEnabled(l.enabledPlatforms);
+      if (j.platform==='tiktok') {
+        if (resolved.kind === 'photo') { requirePhotoEnabled(l.enabledPlatforms); l = photoLimits(l); }
+        else requireVideoEnabled(l.enabledPlatforms);
+      }
       photoId = photoPostId(canonicalUrl);
-      if (resolved.id !== (photoId || videoPostId(canonicalUrl))) throw new AppError('FORMAT_UNAVAILABLE');
+      if (resolved.id !== (photoId || videoPostId(canonicalUrl) || facebookPostId(canonicalUrl))) throw new AppError('FORMAT_UNAVAILABLE');
       // The resolved binding is a worker-only envelope, not part of the strict
       // canonical photo/video metadata contract or anything persisted as formats.
       delete data.resolved;
     }
     const photoMetadata = photoId && phase === 'analyze' ? checkedPhotoMetadata(data, photoId) : null;
     const videoId = videoPostId(canonicalUrl);
-    const audioFormats=phase==='analyze'?checkedAudioFormats(data.formats,j.platform,photoId?'photo':'video',photoId||videoId||undefined):[];
+    const audioFormats=phase==='analyze'?checkedAudioFormats(data.formats,j.platform,photoId?'photo':'video',photoId||videoId||facebookPostId(canonicalUrl)||undefined):[];
     const videoFormats = videoId && phase === 'analyze' ? checkedVideoFormats(primaryFormats(data.formats),videoId) : null;
     if (!photoId && data.kind && data.kind !== 'video') throw new AppError('FORMAT_UNAVAILABLE');
     if (selection||audioSelection) {
@@ -155,7 +159,7 @@ export async function processJob(queued: any) {
           },
         });
       } else {
-        if(audioSelection&&JSON.stringify(selectedAudio(current.items,current.formatId||'',current.platform,photoId||videoId||undefined))!==JSON.stringify(audioSelection))throw new AppError('FORMAT_UNAVAILABLE');
+        if(audioSelection&&JSON.stringify(selectedAudio(current.items,current.formatId||'',current.platform,photoId||videoId||facebookPostId(canonicalUrl)||undefined))!==JSON.stringify(audioSelection))throw new AppError('FORMAT_UNAVAILABLE');
         if (selection) {
           requirePhotoEnabled(l.enabledPlatforms);
           const stored = selectedPhoto(current.items, current.formatId || '', photoId!);

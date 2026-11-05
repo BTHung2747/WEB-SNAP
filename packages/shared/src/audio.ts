@@ -5,7 +5,7 @@ import { AppError } from './core';
 const safe=z.string().regex(/^[A-Za-z0-9_.+-]{1,80}$/);
 const source=z.object({id:safe,ext:z.enum(['m4a','mp3','aac','mp4','webm']),acodec:safe,vcodec:safe,
   width:z.number().int().min(0).max(8192),height:z.number().int().min(0).max(8192),origin:z.enum(['format','music'])}).strict();
-const selection=z.object({version:z.literal('wed-audio-v1'),platform:z.enum(['youtube','tiktok']),contentId:z.string().regex(/^[A-Za-z0-9_-]{6,22}$/),
+const selection=z.object({version:z.literal('wed-audio-v1'),platform:z.enum(['youtube','tiktok','facebook']),contentId:z.string().regex(/^[A-Za-z0-9_-]{6,22}$/),
   sourceType:z.enum(['video','photo']),duration:z.number().positive().max(600),source}).strict();
 const schema=z.object({id:z.string().regex(/^mp3_[a-f0-9]{64}$/),kind:z.literal('audio'),label:z.literal('MP3 · âm thanh'),size:z.null(),selection}).strict();
 export type AudioFormat=z.infer<typeof schema>;
@@ -20,6 +20,7 @@ export function checkedAudioFormats(value:unknown,platform:string,kind:string,ex
   for(const f of p.data){const s=f.selection;
     if(s.platform!==platform||s.sourceType!==kind||(expected&&s.contentId!==expected)||
       platform==='tiktok'&&!/^[0-9]{15,22}$/.test(s.contentId)||platform==='youtube'&&!/^[A-Za-z0-9_-]{11}$/.test(s.contentId)||
+      platform==='facebook'&&!/^[0-9]{6,22}$/.test(s.contentId)||
       kind==='photo'&&(platform!=='tiktok'||s.source.origin!=='music')||
       f.id!=='mp3_'+createHash('sha256').update(canonical(s)).digest('hex'))return reject();
   }

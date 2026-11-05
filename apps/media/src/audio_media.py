@@ -12,8 +12,9 @@ def require(ok,code='FORMAT_UNAVAILABLE'):
     if not ok:raise AudioError(code)
 def canonical(value):return json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
 def descriptor(platform,content_id,source_type,duration,source):
-    require(platform in ('youtube','tiktok') and source_type in ('video','photo'))
+    require(platform in ('youtube','tiktok','facebook') and source_type in ('video','photo'))
     require(type(content_id) is str and re.fullmatch(r'[A-Za-z0-9_-]{6,22}',content_id))
+    if platform=='facebook':require(source_type=='video' and re.fullmatch(r'[0-9]{6,22}',content_id) and source['origin']=='format')
     require(type(duration) in (int,float) and math.isfinite(duration) and 0<duration<=600)
     duration=round(float(duration),3);duration=int(duration) if duration.is_integer() else duration
     require(set(source)=={'id','ext','acodec','vcodec','width','height','origin'})
@@ -28,7 +29,12 @@ def choice(formats,platform,content_id,duration,*,source_type='video'):
     for f in formats:
         # TikTok's public extract_info(process=False) leaves protocol unset;
         # the explicit URL scheme below is the transport authority in that case.
-        if f.get('protocol') not in (None,'https') or f.get('has_drm') or f.get('acodec') in (None,'none') or f.get('fragments') or f.get('manifest_url'):continue
+        # Facebook DASH entries can be complete HTTPS AAC files: manifest_url
+        # records provenance, while protocol=https and no fragments select the
+        # native direct downloader. Keep manifest-backed sources off elsewhere.
+        direct_facebook=platform=='facebook' and f.get('protocol')=='https' and f.get('ext')=='m4a' and f.get('vcodec')=='none' and str(f.get('acodec','')).startswith('mp4a')
+        if platform=='facebook' and not direct_facebook:continue
+        if f.get('protocol') not in (None,'https') or f.get('has_drm') or f.get('acodec') in (None,'none') or f.get('fragments') or (f.get('manifest_url') and not direct_facebook):continue
         if any(word in str(f.get('format_id','')).lower() for word in ('download','watermark')):continue
         u=urllib.parse.urlsplit(f.get('url') or '')
         if u.scheme!='https' or not u.hostname or u.username or u.password or u.fragment or u.path.lower().endswith(('.m3u8','.mpd')):continue
@@ -37,7 +43,7 @@ def choice(formats,platform,content_id,duration,*,source_type='video'):
         ext=f.get('ext');video=f.get('vcodec') not in (None,'none')
         if ext not in ('m4a','mp3','aac','mp4','webm'):continue
         if video and not (type(f.get('width')) is int and type(f.get('height')) is int and min(f['width'],f['height'])<=1080 and max(f['width'],f['height'])<=1920):continue
-        source=dict(id=str(f.get('format_id','')),ext=ext,acodec=str(f['acodec']),vcodec=str(f.get('vcodec') or 'none'),width=f.get('width',0) if video else 0,height=f.get('height',0) if video else 0,origin='format')
+        source=dict(id='facebook-aac' if platform=='facebook' else str(f.get('format_id','')),ext=ext,acodec=str(f['acodec']),vcodec=str(f.get('vcodec') or 'none'),width=f.get('width',0) if video else 0,height=f.get('height',0) if video else 0,origin='format')
         try:public=descriptor(platform,content_id,source_type,duration,source)
         except AudioError:continue
         rows.append((video,-float(f.get('abr') or 0),public,f))

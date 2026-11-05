@@ -13,7 +13,7 @@ x-env: &runtime
   COOKIE_SECURE: 'true'
   CONTACT_EMAIL: ${CONTACT_EMAIL:?Set the real operator contact}
   PRODUCT_NAME: ${PRODUCT_NAME:-WED SNAP}
-  VERIFIED_PLATFORMS: youtube,tiktok
+  VERIFIED_PLATFORMS: ${VERIFIED_PLATFORMS:-youtube,tiktok}
   MEDIA_ROOT: /media
   MEDIA_PROXY: http://egress:8888
   MAX_DURATION_SECONDS: '600'
@@ -113,7 +113,7 @@ services:
       TIKTOK_PREVIEW_ENABLED: ${TIKTOK_PREVIEW_ENABLED:-0}
       TIKTOK_EGRESS_CONTROL_SECRET: ${TIKTOK_EGRESS_CONTROL_SECRET:?Set a new 64 lowercase hex control secret}
       TIKTOK_EGRESS_CONTROL_NETWORKS: ${PRODUCTION_PRIVATE_SUBNET:?Choose a nonoverlapping private production CIDR}
-      EGRESS_DOMAINS: youtube.com,youtu.be,googlevideo.com,ytimg.com,googleapis.com,tiktok.com,tiktokcdn.com,tiktokv.com,byteoversea.com,ibytedtos.com
+      EGRESS_DOMAINS: ${EGRESS_DOMAINS:-youtube.com,youtu.be,googlevideo.com,ytimg.com,googleapis.com,tiktok.com,tiktokcdn.com,tiktokv.com,byteoversea.com,ibytedtos.com}
     networks: [private, outbound]
     read_only: true
     ipc: private

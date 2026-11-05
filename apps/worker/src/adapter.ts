@@ -230,7 +230,7 @@ export async function runAdapter(
       groupStopped = true;
       // Read receipts before packet rejection and before discard/processor cleanup.
       // Logging failure cannot change native outcome, proof acceptance, or lifecycle.
-      try {await mirrorSourceDiagnostics(mediaRoot,id,phase,photo||video||short?'preview':'youtube');} catch {}
+      try {await mirrorSourceDiagnostics(mediaRoot,id,phase,photo||video||short?'preview':new URL(url).hostname.endsWith('facebook.com')||new URL(url).hostname==='fb.watch'?'facebook':'youtube');} catch {}
       try {
         if (stopped) throw new AppError(reason);
         const data = JSON.parse(output.trim().split('\n').at(-1)!);

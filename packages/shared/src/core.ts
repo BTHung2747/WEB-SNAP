@@ -5,6 +5,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import path from 'node:path';
 import { z } from 'zod';
 import { normalizeTikTok } from './tiktok-short';
+import { normalizeFacebook } from './facebook';
 
 export const db = new PrismaClient();
 export const redis = new IORedis(process.env.REDIS_URL || 'redis://redis:6379', {
@@ -151,6 +152,7 @@ export function validateUrl(value: unknown): { url: string; platform: string } {
   const platform = Object.keys(groups).find((p) => groups[p].includes(h));
   if (!platform) fail('UNSUPPORTED_PLATFORM');
     if (platform === 'tiktok') return { platform, url: normalizeTikTok(value) };
+    if (platform === 'facebook') return { platform, url: normalizeFacebook(value) };
     if (u.hash) fail('INVALID_URL');
   if (platform === 'youtube' && (u.searchParams.has('list') || u.pathname.startsWith('/live')))
     fail('UNSUPPORTED_CONTENT');
