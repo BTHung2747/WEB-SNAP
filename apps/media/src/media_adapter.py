@@ -18,7 +18,7 @@ if len(sys.argv)>=4:
             from tiktok.adapter import main as tiktok_main
         sys.exit(tiktok_main(sys.argv[1:]))
 import yt_dlp
-import time,copy
+import time,copy,re
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent.parent/'apps/media/src'))
 from video_policy import full_hd
 from audio_media import choice as audio_choice, encode as encode_audio, PREFIX as AUDIO_ID, AudioError, INPUT_CAP as AUDIO_INPUT, OUTPUT_CAP as AUDIO_OUTPUT
@@ -74,7 +74,15 @@ def youtube_diagnostic(folder, phase, gate, reason, error, cause, platform='yout
     except Exception:pass # Failure cannot alter original error packet, exit, or cleanup.
 phase,url,folder=sys.argv[1:4]
 from urllib.parse import urlsplit,parse_qs
-platform='facebook' if urlsplit(url).hostname in ('facebook.com','www.facebook.com','m.facebook.com','fb.watch') else 'youtube'
+host=urlsplit(url).hostname
+platform='youtube'
+if host in ('facebook.com','www.facebook.com','m.facebook.com','fb.watch'):
+    platform='facebook'
+elif host in ('x.com','www.x.com','twitter.com','www.twitter.com'):
+    platform='x'
+    x_post=re.fullmatch(r'https://x\.com/i/web/status/([1-9][0-9]{0,19})',url)
+    if not x_post:
+        print(json.dumps({'error':'UNSUPPORTED_CONTENT'}));sys.exit(1)
 folder=pathlib.Path(folder);folder.mkdir(parents=True,exist_ok=True)
 max_input=int(os.environ.get('ADAPTER_MAX_INPUT','262144000'))
 max_output=int(os.environ.get('ADAPTER_MAX_OUTPUT','209715200'))
@@ -111,21 +119,23 @@ def hook(d):
     total=sum(f.stat().st_size for f in folder.rglob('*') if f.is_file())
     if total>max_input+max_output:raise Rejected('LIMIT_EXCEEDED')
 opts={'proxy':os.environ.get('MEDIA_PROXY','http://egress:8888'),'quiet':True,'noprogress':True,'no_warnings':True,'noplaylist':True,'cachedir':False,'socket_timeout':10,'retries':1,'fragment_retries':1,'extractor_retries':0,'js_runtimes':{'node':{}},'remote_components':[], 'max_filesize':max_input,'progress_hooks':[hook], 'concurrent_fragment_downloads':1,'hls_prefer_native':True,'external_downloader':{'default':'native'},'outtmpl':str(folder/'media.%(ext)s'),'merge_output_format':'mp4','overwrites':False}
-if phase=='prepare':opts['format']='best' if audio_requested or platform=='facebook' else sys.argv[4]
+if phase=='prepare':opts['format']='best' if audio_requested or platform in ('facebook','x') else sys.argv[4]
 diagnostic_gate='EXTRACTOR';diagnostic_reason='UNKNOWN'
 def valid(info):
     global diagnostic_gate,diagnostic_reason
     diagnostic_gate='METADATA';diagnostic_reason='UNKNOWN'
     if info.get('_type') in ('playlist','multi_video') or info.get('is_live') or info.get('live_status') in ('is_live','is_upcoming'):raise Rejected('UNSUPPORTED_CONTENT')
     if platform=='facebook':
-        import re
         expected=parse_qs(urlsplit(url).query).get('v',[])
         if info.get('extractor_key')!='Facebook' or not re.fullmatch(r'[0-9]{6,22}',str(info.get('id') or '')) or (expected and expected!=[info['id']]):raise Rejected('FORMAT_UNAVAILABLE')
+    if platform=='x':
+        if info.get('_type','video')!='video':raise Rejected('UNSUPPORTED_CONTENT')
+        if info.get('extractor_key')!='Twitter' or info.get('display_id')!=x_post[1] or not re.fullmatch(r'[1-9][0-9]{0,19}',str(info.get('id') or '')):raise Rejected('FORMAT_UNAVAILABLE')
     if info.get('availability') in ('private','premium_only','subscriber_only','needs_auth'):
         diagnostic_gate='METADATA_AUTH';diagnostic_reason={'private':'PRIVATE','premium_only':'PREMIUM_ONLY','subscriber_only':'SUBSCRIBER_ONLY','needs_auth':'NEEDS_AUTH'}[info['availability']]
         raise Rejected('AUTH_REQUIRED')
     if not isinstance(info.get('duration'),(int,float)) or not math.isfinite(info['duration']) or info['duration']>duration_limit:raise Rejected('LIMIT_EXCEEDED')
-    if platform=='facebook' and (type(info['duration']) not in (int,float) or info['duration']<=0):raise Rejected('LIMIT_EXCEEDED')
+    if platform in ('facebook','x') and (type(info['duration']) not in (int,float) or info['duration']<=0):raise Rejected('LIMIT_EXCEEDED')
     if info.get('age_limit',0)>0:
         diagnostic_gate='METADATA_AGE';diagnostic_reason='AGE_RESTRICTED'
         raise Rejected('AUTH_REQUIRED')
@@ -134,6 +144,31 @@ def facebook_codec(value):
     value=str(value or '').split('.')[0].lower()
     return {'avc1':'H.264','h264':'H.264','av01':'AV1','av1':'AV1',
             'hvc1':'H.265','hev1':'H.265','hevc':'H.265'}.get(value,value)
+
+def x_cdn_url(value, host):
+    if not isinstance(value,str):return None
+    try:parts=urlsplit(value)
+    except ValueError:return None
+    if parts.scheme=='https' and parts.netloc==host and not parts.fragment:return parts
+    return None
+
+def x_formats(info):
+    # The pinned extractor leaves codecs unspecified on progressive MP4s.
+    # Admit native files by CDN, transport and dimensions, and probe the file after download.
+    rows={};native={}
+    for f in info.get('formats') or []:
+        parts=x_cdn_url(f.get('url'),'video.twimg.com')
+        width,height=f.get('width'),f.get('height')
+        if (not parts or not parts.path.endswith('.mp4') or f.get('protocol') not in (None,'https')
+                or f.get('fragments') or f.get('manifest_url') or f.get('has_drm') or not full_hd(width,height)):
+            continue
+        size=f.get('filesize')
+        if size and size>min(max_input,max_output):continue
+        choice=f"x_mp4_{info['id']}_{width}x{height}"
+        if choice in native and (f.get('tbr') or 0)<=(native[choice].get('tbr') or 0):continue
+        native[choice]=f
+        rows[choice]=dict(id=choice,label=f'{width} × {height} px · MP4',size=size,width=width,height=height,kind='video')
+    return list(rows.values()),native
 
 def formats(info):
     fs=info.get('formats',[]);rows=[];native={}
@@ -177,29 +212,37 @@ def formats(info):
             codec=row['label'].split(' · ')[1]
             choice='fb_mp4_'+str(row['width'])+'x'+str(row['height'])+'_'+codec.lower().replace('.','')
             native[choice]=row['id'];row['id']=choice
+    return rows,native
+
+def rank_formats(rows):
     rank=lambda r:(r['width']*r['height'],min(r['width'],r['height']),max(r['width'],r['height']))
     # yt-dlp's auto-selected format_id is not a source-declared player default.
     for row in rows:row['sourceDefault']=False
     rows=sorted(rows,key=lambda r:(not r['sourceDefault'],tuple(-n for n in rank(r))))[:30]
     best=max((rank(r) for r in rows),default=None)
     for row in rows:row['highest']=rank(row)==best
-    return rows,native
+    return rows
 try:
     with BoundedYoutubeDL(opts) as ydl:
         # Facebook's processed result retains its earlier SD/HD selection.
-        # Resolve prepare from raw metadata so process_ie_result selects once.
-        info=ydl.extract_info(url,download=False,process=False) if audio_requested or (platform=='facebook' and phase=='prepare') else ydl.extract_info(url,download=False)
+        # For X, raw metadata also prevents following external cards and playlists.
+        raw_metadata=audio_requested or platform=='x' or (platform=='facebook' and phase=='prepare')
+        info=ydl.extract_info(url,download=False,process=not raw_metadata)
         if platform=='facebook':
             from yt_dlp.utils import determine_protocol
             for f in info.get('formats') or []:
                 if f.get('protocol') is None and isinstance(f.get('url'),str):f['protocol']=determine_protocol(f)
-        valid(info);rows,native=formats(info)
-        audio_format,audio_source=audio_choice(info.get('formats') or [],platform,str(info.get('id') or ''),info['duration'])
+        valid(info)
+        rows,native=x_formats(info) if platform=='x' else formats(info)
+        rows=rank_formats(rows)
+        audio_format,audio_source=(None,None) if platform=='x' else audio_choice(info.get('formats') or [],platform,str(info.get('id') or ''),info['duration'])
         if audio_format:rows.append(audio_format)
         if not rows:raise Rejected('FORMAT_UNAVAILABLE')
         if phase=='analyze':
             # Preview is downloaded through the same SSRF-controlled proxy; no signed URL is exposed.
             thumb=info.get('thumbnail')
+            if platform=='x':
+                thumb=next((t['url'] for t in info.get('thumbnails',[]) if x_cdn_url(t.get('url'),'pbs.twimg.com')),None)
             if thumb and thumb.startswith('https://'):
                 try:
                     with ydl.urlopen(thumb) as response:data=response.read(2097153)
@@ -242,16 +285,23 @@ try:
                 # changing params['format'] does not rebuild that selector.
                 with BoundedYoutubeDL(dict(opts,format=native[selected])) as downloader:
                     downloader.process_ie_result(info,download=True)
+            elif platform=='x':
+                # Only this media ID and resolution were offered for the requested post.
+                if any(os.path.lexists(folder/name) for name in ('media.mp4','media.mp4.part')):raise Rejected('INVALID_ASSET_PATH')
+                with BoundedYoutubeDL(dict(opts,format='best*')) as downloader:
+                    downloader.process_ie_result(dict(info,formats=[native[selected]]),download=True)
             else:
                 ydl.params['format']=selected
                 ydl.process_ie_result(info,download=True)
             files=[f for f in folder.glob('media.*') if f.suffix=='.mp4']
+            if platform=='x' and (len(files)!=1 or files[0].is_symlink() or not files[0].is_file()):raise Rejected('FORMAT_UNAVAILABLE')
             if len(files)!=1 or files[0].stat().st_size>max_output:raise Rejected('LIMIT_EXCEEDED')
             entries='stream=codec_type,width,height,duration:format=duration' if platform=='facebook' else 'stream=codec_type,width,height:format=duration'
+            if platform=='x':entries='stream=codec_type,width,height,duration:format=format_name,duration:format_tags=major_brand'
             p=subprocess.run(['ffprobe','-v','error','-show_entries',entries,'-of','json',str(files[0])],capture_output=True,text=True,timeout=10)
             if p.returncode:raise Rejected('FORMAT_UNAVAILABLE')
             probe=json.loads(p.stdout);kinds=[s['codec_type'] for s in probe.get('streams',[])]
-            if 'video' not in kinds or 'audio' not in kinds:raise Rejected('FORMAT_UNAVAILABLE')
+            if 'video' not in kinds or (platform!='x' and 'audio' not in kinds):raise Rejected('FORMAT_UNAVAILABLE')
             chosen=next(r for r in rows if r['id']==selected)
             videos=[s for s in probe.get('streams',[]) if s.get('codec_type')=='video']
             if not videos or any(not full_hd(s.get('width'),s.get('height')) for s in videos):raise Rejected('FORMAT_UNAVAILABLE')
@@ -259,10 +309,14 @@ try:
             try:probed_duration=float(probe['format'].get('duration'))
             except (TypeError,ValueError):raise Rejected('LIMIT_EXCEEDED')
             if not math.isfinite(probed_duration) or probed_duration>duration_limit:raise Rejected('LIMIT_EXCEEDED')
-            if platform=='facebook':
-                from tiktok.candidate_file import matches_metadata_duration
+            if platform in ('facebook','x'):
+                from tiktok.candidate_file import MP4_BRANDS,matches_metadata_duration
                 audio=[s for s in probe.get('streams',[]) if s.get('codec_type')=='audio']
-                if len(videos)!=1 or len(audio)!=1:raise Rejected('FORMAT_UNAVAILABLE')
+                if len(videos)!=1 or len(audio)>1:raise Rejected('FORMAT_UNAVAILABLE')
+                if platform=='x':
+                    fmt=probe['format']
+                    if 'mp4' not in fmt.get('format_name','').split(',') or fmt.get('tags',{}).get('major_brand','').strip().lower() not in MP4_BRANDS:raise Rejected('FORMAT_UNAVAILABLE')
+                elif not audio:raise Rejected('FORMAT_UNAVAILABLE')
                 try:durations=[probed_duration,*[float(s.get('duration')) for s in videos+audio]]
                 except (TypeError,ValueError):raise Rejected('FORMAT_UNAVAILABLE')
                 if any(not math.isfinite(d) or not 0<d<=duration_limit for d in durations):raise Rejected('FORMAT_UNAVAILABLE')
@@ -272,7 +326,7 @@ try:
 except Exception as e:
     cause = youtube_error_cause(e)
     source_reason = youtube_message_reason(cause) if diagnostic_reason == 'UNKNOWN' and platform=='youtube' else diagnostic_reason
-    youtube_diagnostic(folder, phase, diagnostic_gate, source_reason, e, cause,platform)
+    if platform!='x':youtube_diagnostic(folder, phase, diagnostic_gate, source_reason, e, cause,platform)
     message=str(e).lower()
     code=str(e) if isinstance(e,(Rejected,AudioError)) and str(e) in ('AUTH_REQUIRED','FORMAT_UNAVAILABLE','SOURCE_TIMEOUT','LIMIT_EXCEEDED','CONTENT_UNAVAILABLE','INVALID_ASSET_PATH','UNSUPPORTED_CONTENT') else ('AUTH_REQUIRED' if any(s in message for s in ['sign in','login','log in','private']) else 'FORMAT_UNAVAILABLE' if 'requested format is not available' in message else 'SOURCE_TIMEOUT' if 'timed out' in message else 'LIMIT_EXCEEDED' if 'filesize' in message else 'CONTENT_UNAVAILABLE')
     if source_reason == 'SOURCE_BOT_VERIFICATION_MESSAGE':

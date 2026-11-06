@@ -154,6 +154,13 @@ export function validateUrl(value: unknown): { url: string; platform: string } {
     if (platform === 'tiktok') return { platform, url: normalizeTikTok(value) };
     if (platform === 'facebook') return { platform, url: normalizeFacebook(value) };
     if (u.hash) fail('INVALID_URL');
+  if (platform === 'x') {
+    const authority = /^https:\/\/([^/?#]+)/i.exec(value)?.[1]?.toLowerCase();
+    if (!authority || !groups.x.includes(authority) || /[\x00-\x20\x7f\\]/.test(value)) fail('INVALID_URL');
+    const path = /^\/(?:[A-Za-z0-9_]{1,15}|i\/web)\/status\/([1-9][0-9]{0,19})\/?$/.exec(u.pathname);
+    if (!path) return fail('UNSUPPORTED_CONTENT');
+    return { platform, url: `https://x.com/i/web/status/${path[1]}` };
+  }
   if (platform === 'youtube' && (u.searchParams.has('list') || u.pathname.startsWith('/live')))
     fail('UNSUPPORTED_CONTENT');
   // Strip tracking/query data; short-link redirects are checked again by the egress proxy.
@@ -163,8 +170,7 @@ export function validateUrl(value: unknown): { url: string; platform: string } {
     if (!id || !/^[-\w]{11}$/.test(id)) fail('INVALID_URL');
     return { platform, url: `https://www.youtube.com/watch?v=${id}` };
   }
-  u.search = '';
-  return { platform: platform!, url: u.toString() };
+  return fail('UNSUPPORTED_PLATFORM');
 }
 export function parseRange(
   header: string | undefined,
