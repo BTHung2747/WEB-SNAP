@@ -2,6 +2,7 @@
 only source HTTP responses and parent control channel are fixtures.
 """
 import hashlib, io, json, multiprocessing, os, pathlib, subprocess, sys, time, types, uuid
+from unittest.mock import patch
 sys.path.insert(0, '/app/apps/media/src'); sys.path.insert(0, '/app/apps/egress/src')
 import requests, urllib3
 from tiktok import adapter, photo_core, preview_cache as cache
@@ -52,7 +53,11 @@ def factory(kind='photo', mode='ok'):
             elif prepared.url in (IMAGE,POSTER,SECOND):
                 if mode=='hold':time.sleep(5)
                 body=(OUT/('changed.jpg' if mode=='changed' or prepared.url==SECOND else 'fixture.jpg')).read_bytes();mime='image/jpeg'
-                if mode=='oversize': body=b'x'*(cache.SOURCE_CAP+1)
+                if mode=='album-large' and prepared.url==SECOND:
+                    # Legal JPEG comments keep the real raster while exercising a large source body.
+                    comment=b'\xff\xfe'+(60002).to_bytes(2,'big')+b' '*60000
+                    body=body[:2]+comment*10+body[2:]
+                if mode=='oversize': body=b'x'*(cache.PHOTO_SOURCE_CAP+1)
                 if mode=='redirect': status=302
                 if mode=='html': body=b'<html>FAKE_source_token</html>';mime='text/html'
                 if mode=='timeout': raise requests.exceptions.ReadTimeout('FAKE_sensitive_message')
@@ -112,7 +117,9 @@ def unit():
             try:cache.verify_photo(folder,key,OUT/'changed.jpg',time.monotonic()+5,16*1024*1024)
             except ValueError as error: assert error.args==('PREVIEW_CONTENT_CHANGED',)
             else:raise AssertionError('same-dimension reorder accepted')
-        else: assert not list(folder.glob('preview*'))
+        else:
+            assert {p.name for p in folder.glob('preview*')} == {'preview-diagnostic.json'}
+            if mode=='oversize': assert json.loads((folder/'preview-diagnostic.json').read_bytes())['code']=='PREVIEW_SIZE'
         cases.append('optional-'+mode+'-close-and-owned-cleanup')
     # Default off: no grant, no HTTP; exhausted deadline: no HTTP.
     folder=ROOT/str(uuid.uuid4());folder.mkdir();Session,events,_,_=factory()
@@ -121,6 +128,22 @@ def unit():
     os.environ['WED_PREVIEW_REQUEST']='1';cache.generate(folder,[(key,IMAGE)],time.monotonic()-1,grant=lambda count,end:(('a'*64,'b'*64),end),session_factory=Session)
     assert not events
     cases.append('default-off-and-deadline-no-send')
+    # The second image reaches normalization after the old six-second cutoff.
+    album=ROOT/str(uuid.uuid4());album.mkdir()
+    second_key='ttp1_02_'+'b'*64
+    Session,events,_,_=factory(mode='album-large')
+    offset=0
+    normalize=cache.normalized
+    def normalize_album(path,end,cap):
+        nonlocal offset
+        if len(events)==2: offset=7
+        return normalize(path,end,cap)
+    end=time.monotonic()+20
+    with patch.object(cache,'time',types.SimpleNamespace(monotonic=lambda:time.monotonic()+offset)),patch.object(cache,'normalized',normalize_album):
+        cache.generate(album,[(key,IMAGE),(second_key,SECOND)],end,grant=lambda count,_:(('a'*64,'b'*64),end),session_factory=Session)
+    assert len(events)==2
+    assert [e['key'] for e in json.loads((album/'previews.pending.json').read_bytes())['entries']]==[key,second_key]
+    cases.append('album-finishes-with-larger-source-after-old-preview-cutoff')
     # A library raw.read can block beyond our soft budget despite socket timeout.
     # The HTTP-only fork has no decoder descendants, is killed/reaped directly.
     Session,events,_,_=factory(mode='slow-body');start=time.monotonic()

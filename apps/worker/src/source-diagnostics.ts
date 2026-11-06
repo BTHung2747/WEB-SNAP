@@ -7,7 +7,7 @@ const count=z.number().int().min(0).max(50),bytes=z.number().int().min(0).max(8*
 const preview=z.object({version:z.literal(1),outcome:z.enum(['SKIPPED','PENDING','FAIL']),
   stage:z.enum(['CANDIDATES','GRANT','FETCH','INPUT_WRITE','NORMALIZE','JPEG','IMAGE_WRITE','INDEX']),
   code:z.enum(['OK','INVALID_CANDIDATES','NO_GRANT','PREVIEW_DEADLINE','PREVIEW_SIZE','PREVIEW_TYPE','PREVIEW_STREAMS','PREVIEW_PIXELS','PREVIEW_DECODE','PREVIEW_NATIVE','PREVIEW_INDEX','PREVIEW_THREADS','PREVIEW_WORKER','PREVIEW_FETCH','PREVIEW_REAP','SUBPROCESS_TIMEOUT','JSON_INVALID','ENOENT','EACCES','EEXIST','ELOOP','EPERM','EIO','OS_ERROR','UNKNOWN']),
-  count,completedCount:count,sourceBytes:bytes,lastSourceBytes:z.number().int().min(0).max(512*1024),outputBytes:bytes,
+  count,completedCount:count,sourceBytes:bytes,lastSourceBytes:z.number().int().min(0).max(2*1024*1024),outputBytes:bytes,
   remainingSeconds:z.number().finite().min(-30).max(30),elapsedSeconds:z.number().finite().min(0).max(30)}).strict();
 const exceptionClass=z.enum(['DownloadError','ExtractorError','GeoRestrictedError','UnavailableVideoError','Rejected','AudioError','UNKNOWN']);
 const youtube=z.object({version:z.literal(1),phase:z.enum(['analyze','prepare']),

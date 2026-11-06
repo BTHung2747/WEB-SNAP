@@ -21,6 +21,7 @@ import time
 KEY = re.compile(r'(?:video|ttp1_[0-9]{2}_[a-f0-9]{64})')
 HEX = re.compile(r'[a-f0-9]{64}')
 SOURCE_CAP = 512 * 1024
+PHOTO_SOURCE_CAP = 2 * 1024 * 1024
 TOTAL_CAP = 8 * 1024 * 1024
 JPEG_CAP = 128 * 1024
 SIDE = 320
@@ -157,7 +158,7 @@ def _fetch(pipe, url, credentials, end, cap, folder, session_factory):
     A parent kill closes every inherited process socket, even if a library read
     or close is blocked. The egress proof then rejects this optional phase.
     """
-    ydl = None; body = b''; used = 0; ok = False
+    ydl = b = None; body = b''; used = 0; ok = False; code = 'PREVIEW_FETCH'
     try:
         import requests
         from yt_dlp.networking import Request
@@ -165,7 +166,7 @@ def _fetch(pipe, url, credentials, end, cap, folder, session_factory):
         from .photo_proxy import PhotoProxyAdapter
         from .session_owner import SessionOwner
         b = Budget(cap, JPEG_CAP, end, 6)
-        b.mode = 'preview'; b.max_requests = 1; b.response_cap = min(SOURCE_CAP, cap); b.total_cap = cap
+        b.mode = 'preview'; b.max_requests = 1; b.response_cap = b.total_cap = cap
         def factory():
             base = requests.Session()
             try:
@@ -181,13 +182,15 @@ def _fetch(pipe, url, credentials, end, cap, folder, session_factory):
                 body = response.read()
         finally: used = b.network_total
         ydl.close(); ydl = None; b.check(); ok = True
-    except Exception: pass
+    except Exception as error:
+        if b is not None and b.failure == 'BYTE_LIMIT': code = 'PREVIEW_SIZE'
+        elif type(error) is ValueError and error.args == ('PREVIEW_TYPE',): code = 'PREVIEW_TYPE'
     finally:
         if ydl is not None:
             try: ydl.close()
             except Exception: ok = False
         try:
-            header = json.dumps(dict(ok=ok, used=used), separators=(',', ':')).encode()
+            header = json.dumps(dict(ok=ok, used=used, code=None if ok else code), separators=(',', ':')).encode()
             pipe.send_bytes(header + b'\n' + (body if ok else b''))
         finally: pipe.close()
 
@@ -199,18 +202,20 @@ def fetch(url, credentials, end, cap, folder, session_factory=None):
     # Pipe payload/response are bounded RAM only. No URL on command line/file.
     if threading.active_count() != 1 or len(os.listdir('/proc/self/task')) != 1: raise ValueError('PREVIEW_THREADS')
     remaining(end)
-    if not 0 < cap <= TOTAL_CAP: raise ValueError('PREVIEW_SIZE')
+    if not 0 < cap <= PHOTO_SOURCE_CAP: raise ValueError('PREVIEW_SIZE')
     context = multiprocessing.get_context('fork')
     receiver, sender = context.Pipe(duplex=False)
     process = context.Process(target=_fetch, args=(sender,url,credentials,end,cap,folder,session_factory))
     try:
         process.start(); sender.close()
         if not receiver.poll(remaining(end)): raise ValueError('PREVIEW_DEADLINE')
-        packet = receiver.recv_bytes(SOURCE_CAP + 128)
+        packet = receiver.recv_bytes(cap + 128)
         process.join(remaining(end))
         if process.is_alive() or process.exitcode != 0: raise ValueError('PREVIEW_WORKER')
         header, body = packet.split(b'\n', 1); p = json.loads(header)
-        if set(p) != {'ok','used'} or p['ok'] is not True or type(p['used']) is not int or not 0 < p['used'] == len(body) <= min(SOURCE_CAP,cap): raise ValueError('PREVIEW_FETCH')
+        if set(p) != {'ok','used','code'}: raise ValueError('PREVIEW_FETCH')
+        if p['ok'] is False and not body and p['code'] in ('PREVIEW_SIZE', 'PREVIEW_TYPE'): raise ValueError(p['code'])
+        if p['ok'] is not True or p['code'] is not None or type(p['used']) is not int or not 0 < p['used'] == len(body) <= cap: raise ValueError('PREVIEW_FETCH')
         return body
     finally:
         sender.close(); receiver.close()
@@ -248,17 +253,19 @@ def generate(folder, candidates, deadline, *, grant=capability, session_factory=
         if granted is None:
             report('SKIPPED', 'NO_GRANT'); return
         creds, parent_end = granted
-        end = min(deadline - 2, parent_end - 2, time.monotonic() + 6)
+        preview_seconds = 12 if count > 1 else 6
+        end = min(deadline - 2, parent_end - 2, time.monotonic() + preview_seconds)
         remaining(end)
         for key, url in chosen:
             stage = 'FETCH'; last_source = 0
             remaining(end)
-            source = fetch(url, creds, end, TOTAL_CAP-total, folder, session_factory)
+            source_cap = SOURCE_CAP if key == 'video' else PHOTO_SOURCE_CAP
+            source = fetch(url, creds, end, min(source_cap, TOTAL_CAP-total), folder, session_factory)
             last_source = len(source); total += last_source
             stage = 'INPUT_WRITE'
             temp = owned.put('preview-input.part', source)
             stage = 'NORMALIZE'
-            try: raw = normalized(temp, end)
+            try: raw = normalized(temp, end, source_cap)
             finally: owned.remove(temp)
             stage = 'JPEG'
             data = jpeg(raw, end); disk += len(data)

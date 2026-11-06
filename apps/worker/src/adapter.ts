@@ -126,7 +126,8 @@ export async function runAdapter(
           // Its own expiry includes fetch/normalization + closure and precedes
           // the mandatory metadata deadline. An optional proof timeout must not
           // spend the final metadata second and turn a valid analyze into FAIL.
-          const optionalEnd=Math.min(absoluteEnd-1000,performance.now()+8000);
+          const previewPhaseMs=p.count>1?14_000:8_000;
+          const optionalEnd=Math.min(absoluteEnd-1000,performance.now()+previewPhaseMs);
           optionalPhase=await ProxyPhase.open('analyze',id,token,optionalEnd,previewTransfer(url,p.count));
           if(stopped||settled) { await optionalPhase.abort(); return; }
           const env=optionalPhase.childEnv();
