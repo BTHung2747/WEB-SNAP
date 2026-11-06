@@ -152,6 +152,7 @@ services:
     command: [node, dist/apps/worker/src/main.js]
     environment:
       <<: *runtime
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
       TIKTOK_PREVIEW_ENABLED: ${TIKTOK_PREVIEW_ENABLED:-0}
     volumes: [media_data:/media]
     mem_limit: 768m

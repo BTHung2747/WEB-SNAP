@@ -97,9 +97,11 @@ try{
  Require (!$c.services.proxy.environment.ADMIN_SESSION_SECRET -and !$c.services.proxy.environment.TIKTOK_EGRESS_CONTROL_SECRET -and !$c.services.proxy.environment.DATABASE_URL) 'NO_SECRET_ON_PROXY'
  Require ($c.services.api.volumes[0].read_only -and !$c.services.worker.volumes[0].read_only) 'MEDIA_OWNERSHIP'
  $report.cases+=@{name='standalone default-off topology/ports/guards/origin/compiled/secret forwarding';result='PASS';actualExit=$r.actualExit;elapsedMs=$r.elapsedMs}
- $on=Render ($text+"`nTIKTOK_ADAPTER_ENABLED=1`nTIKTOK_PHOTO_ENABLED=1`nTIKTOK_VIDEO_ENABLED=1`nTIKTOK_EGRESS_POLICY_ENABLED=1`n")
+ Require ($c.services.worker.environment.WORKER_CONCURRENCY -ceq '1') 'WORKER_CONCURRENCY_DEFAULT'
+ $on=Render ($text+"`nTIKTOK_ADAPTER_ENABLED=1`nTIKTOK_PHOTO_ENABLED=1`nTIKTOK_VIDEO_ENABLED=1`nTIKTOK_EGRESS_POLICY_ENABLED=1`nWORKER_CONCURRENCY=2`n")
  PreviewRoles $on.config '0'
  Require ($on.config.services.api.environment.TIKTOK_VIDEO_ENABLED -ceq '1' -and $on.config.services.worker.environment.TIKTOK_VIDEO_ENABLED -ceq '1' -and $on.config.services.egress.environment.TIKTOK_EGRESS_POLICY_ENABLED -ceq '1') 'ASSIGNED_GATES_FORWARD'
+ Require ($on.config.services.worker.environment.WORKER_CONCURRENCY -ceq '2' -and !$on.config.services.api.environment.PSObject.Properties['WORKER_CONCURRENCY']) 'WORKER_CONCURRENCY_OVERRIDE'
  $report.cases+=@{name='explicit target-stage gate forwarding';result='PASS';actualExit=$on.actualExit;elapsedMs=$on.elapsedMs}
  $missing=Render ($text.Replace('POSTGRES_PASSWORD=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','POSTGRES_PASSWORD=')) $false
  $report.cases+=@{name='missing production secret rejects config';result='PASS';actualExit=$missing.actualExit;elapsedMs=$missing.elapsedMs}
