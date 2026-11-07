@@ -33,6 +33,7 @@ export default function Home({ session }: { session: Session }) {
   const pending = useRef<'analyze' | 'prepare' | null>(null);
   const mounted = useRef(true);
   const sponsorRequest = useRef(0);
+  const sponsorRegion = useRef<HTMLDivElement>(null);
   const resultRegion = useRef<HTMLElement>(null);
   const resultDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -50,21 +51,23 @@ export default function Home({ session }: { session: Session }) {
       setBusy(false);
     }
   }
+  function clearSponsor() {
+    sponsorRequest.current++;
+    if (sponsorRegion.current?.contains(document.activeElement))
+      resultRegion.current?.focus({ preventScroll: true });
+    setSponsor(null);
+  }
   const tracking = !!jobId && ['analyzing', 'selectable', 'queued', 'preparing', 'ready'].includes(job?.state || 'analyzing');
   const lifecycle = useJobLifecycle(jobId, tracking, session.csrf, (j) => {
-    if (['failed', 'cancelled', 'expired'].includes(j.state)) {
-      stopPreparing();
-      sponsorRequest.current++;
-      setSponsor(null);
-    }
+    if (['failed', 'cancelled', 'expired'].includes(j.state)) stopPreparing();
+    if (['ready', 'failed', 'cancelled', 'expired'].includes(j.state)) clearSponsor();
     setJob(j);
     setError(j.errorCode ? messages[j.errorCode] || j.errorCode : '');
     if (j.state === 'selectable') setFormat((f) => f || initialSourceFormat((j.items[0]?.formats || []).filter(r=>r.kind!=='audio')));
   }, (e, missing) => {
     if (missing) {
       stopPreparing();
-      sponsorRequest.current++;
-      setSponsor(null);
+      clearSponsor();
     }
     setError(e.message);
     if (missing && jobId) setJob((j) => ({
@@ -84,8 +87,7 @@ export default function Home({ session }: { session: Session }) {
     if (pending.current) return;
     pending.current = 'analyze';
     const version = ++operation.current;
-    sponsorRequest.current++;
-    setSponsor(null);
+    clearSponsor();
     setBusy(true);
     setError('');
     setStarted(false);
@@ -103,16 +105,6 @@ export default function Home({ session }: { session: Session }) {
       const data = await api('jobs/analyze', session.csrf, 'POST', { url: url.trim() });
       if (!mounted.current || operation.current !== version) return;
       setJobId(data.jobId);
-      // Old-job callbacks may invalidate grants while replacement cancel is pending.
-      // Bind this generation to the accepted new job's sponsor request.
-      const sponsorVersion = ++sponsorRequest.current;
-      // The cookie-session grant is atomic on the server across tabs.
-      api('ads?placement=sponsor', session.csrf)
-        .then((a) => {
-          if (a && mounted.current && sponsorRequest.current === sponsorVersion)
-            setSponsor(a);
-        })
-        .catch(() => {});
     } catch (e) {
       if (mounted.current && operation.current === version) setError((e as Error).message);
     } finally {
@@ -123,11 +115,13 @@ export default function Home({ session }: { session: Session }) {
     }
   }
   async function prepare(formatId = format) {
-    if (!job || job.state !== 'selectable' || !item || !item.formats.some((f) => f.id === formatId) || photoBlocked || pending.current) return;
+    const requestedFormat = item?.formats.find((f) => f.id === formatId);
+    if (!job || job.state !== 'selectable' || !item || !requestedFormat || photoBlocked || pending.current) return;
     pending.current = 'prepare';
     if (formatId !== format) prepareKey.current = crypto.randomUUID();
     setFormat(formatId);
     const version = operation.current;
+    const sponsorVersion = ++sponsorRequest.current;
     setBusy(true);
     setError('');
     try {
@@ -136,8 +130,17 @@ export default function Home({ session }: { session: Session }) {
         formatId,
         idempotencyKey: prepareKey.current,
       });
-      if (mounted.current && operation.current === version && lifecycle.current.current === job.id)
-        setJob((j) => j?.id === job.id ? { ...j, state: r.state } : j);
+      if (!mounted.current || operation.current !== version || lifecycle.current.current !== job.id) return;
+      setJob((j) => j?.id === job.id && j.state === 'selectable' ? { ...j, state: r.state } : j);
+      // Request the grant only after the server has accepted the preparation.
+      if (item.kind === 'video' && requestedFormat.kind !== 'audio' &&
+          (r.state === 'queued' || r.state === 'preparing') && sponsorRequest.current === sponsorVersion) {
+        void api('ads?placement=sponsor', session.csrf)
+          .then((campaign) => {
+            if (campaign && mounted.current && sponsorRequest.current === sponsorVersion) setSponsor(campaign);
+          })
+          .catch(() => {});
+      }
     } catch (e) {
       if (mounted.current && operation.current === version) setError((e as Error).message);
     } finally {
@@ -152,16 +155,14 @@ export default function Home({ session }: { session: Session }) {
       if (!mounted.current || operation.current !== version) return;
       lifecycle.stop();
       stopPreparing();
-      sponsorRequest.current++;
-      setSponsor(null);
+      clearSponsor();
       setJob((j) => ({ ...(j || { id: jobId, title: null, duration: null, previewUrl: null, items: [], errorCode: null }), state: 'cancelled' }));
     } catch (e) {
       if (!mounted.current || operation.current !== version) return;
       if (isMissingJob(e)) {
         lifecycle.stop();
         stopPreparing();
-        sponsorRequest.current++;
-        setSponsor(null);
+        clearSponsor();
         setJob((j) => ({ ...(j || { id: jobId, title: null, duration: null, previewUrl: null, items: [] }), state: 'expired', errorCode: e.code }));
       }
       setError((e as Error).message);
@@ -169,6 +170,7 @@ export default function Home({ session }: { session: Session }) {
   }
   const state = job?.state || (jobId ? 'analyzing' : 'idle');
   const processing = ['analyzing', 'queued', 'preparing'].includes(state);
+  const activeSponsor = item?.kind === 'video' && (state === 'queued' || state === 'preparing') ? sponsor : null;
   const stateLabels: Record<string, string> = {
     analyzing: 'Đang lấy thông tin từ nguồn…',
     queued: 'Đang chờ đến lượt xử lý…',
@@ -197,6 +199,18 @@ export default function Home({ session }: { session: Session }) {
     if (state === 'ready' && currentFormat && downloadLink.error) return <><p className="error" role="alert">{downloadLink.error}</p><button className={actionClass} onClick={downloadLink.retry}>Tạo lại liên kết tải</button></>;
     return <button className={actionClass} disabled>{currentFormat ? state === 'ready' ? 'Đang tạo liên kết…' : 'Đang chuẩn bị…' : 'Đã khóa lựa chọn'}</button>;
   }
+  const processingStatus = processing && (
+    <div className="processing">
+      <span className="status-mark" aria-hidden="true" />
+      <div className="status-copy" key={state}>
+        <strong>{stateLabels[state]}</strong>
+        <p>Bạn có thể hủy yêu cầu bất cứ lúc nào.</p>
+      </div>
+      <button className="text-btn" onClick={() => { resultRegion.current?.focus({ preventScroll: true }); void cancel(); }}>
+        Hủy
+      </button>
+    </div>
+  );
   return (
     <>
       <main className="studio-home" data-state={state}>
@@ -256,10 +270,13 @@ export default function Home({ session }: { session: Session }) {
             {!jobId && error && <p className="error" role="alert">{error}</p>}
           </div>
         </section>
-        <dialog ref={resultDialog} className={`result-dialog balanced-dialog${photo?' photo-dialog':''}`} aria-labelledby="result-dialog-title"
+        <dialog ref={resultDialog} className={`result-dialog balanced-dialog${photo?' photo-dialog':''}${activeSponsor?' sponsor-dialog':''}`} aria-labelledby="result-dialog-title"
+          onCancel={(event) => {
+            if (activeSponsor) { event.preventDefault(); clearSponsor(); }
+          }}
           onClose={() => document.getElementById('video-url')?.focus()}>
         <h2 id="result-dialog-title" className="sr-only">{photo ? 'Ảnh trong bài đăng' : 'Video của bạn'}</h2>
-        <button className="balanced-close" aria-label="Đóng kết quả" onClick={closeResults}><Icon name="close" /></button>
+        <button className="balanced-close" aria-label={activeSponsor ? 'Đóng tài trợ' : 'Đóng kết quả'} onClick={activeSponsor ? clearSponsor : closeResults}><Icon name="close" /></button>
         <section className="result-area" ref={resultRegion} tabIndex={-1} aria-label="Kết quả nội dung">
             {(jobId || error) && (
               <div className="job-panel" data-state={state} aria-live="polite" aria-atomic="false" aria-busy={busy}>
@@ -268,20 +285,21 @@ export default function Home({ session }: { session: Session }) {
                     {error}
                   </p>
                 )}
-                {processing && (
-                  <div className="processing">
-                    <span className="status-mark" aria-hidden="true" />
-                    <div className="status-copy" key={state}>
-                      <strong>{stateLabels[state]}</strong>
-                      <p>Bạn có thể hủy yêu cầu bất cứ lúc nào.</p>
+                {!activeSponsor && processingStatus}
+                {activeSponsor && job ? (
+                  <div className="prepare-split" ref={sponsorRegion}>
+                    <div className="prepare-file">
+                      <h3>Tệp của bạn</h3>
+                      <MediaPreview url={job.previewUrl} jobId={job.id} alt={job.title ? `Xem trước: ${job.title}` : 'Ảnh xem trước video'} compact />
+                      <p className="prepare-title">{job.title || 'Video của bạn'}</p>
+                      {selected && <p className="prepare-format">{selected.label}</p>}
+                      {processingStatus}
                     </div>
-                    <button className="text-btn" onClick={() => { resultRegion.current?.focus({ preventScroll: true }); void cancel(); }}>
-                      Hủy
-                    </button>
+                    <div className="prepare-sponsor" aria-live="off">
+                      <Advertising ad={activeSponsor} csrf={session.csrf} />
+                    </div>
                   </div>
-                )}
-                {photoBlocked && <p className="muted" role="status">Tải ảnh TikTok chưa được bật. Bạn có thể thử một đường dẫn video được hỗ trợ.</p>}
-                {job && !photoBlocked && ['selectable', 'queued', 'preparing', 'ready'].includes(state) && (
+                ) : job && !photoBlocked && ['selectable', 'queued', 'preparing', 'ready'].includes(state) && (
                   photo ? <div className="balanced-album">
                     <header className="album-heading"><h3>{job.title || (imageFormats.length===1?'Ảnh TikTok':'Bài ảnh TikTok')}</h3><p>{imageFormats.length} ảnh</p></header>
                     <div className="album-toolbar">{audioFormat&&downloadAction(audioFormat.id)}<button className="balanced-other" onClick={closeResults}>Thử liên kết khác</button></div>
@@ -321,6 +339,7 @@ export default function Home({ session }: { session: Session }) {
                     </div>
                   </div>
                 )}
+                {photoBlocked && <p className="muted" role="status">Tải ảnh TikTok chưa được bật. Bạn có thể thử một đường dẫn video được hỗ trợ.</p>}
                 {started && <p className="started"><Icon name="check" /> Đã bắt đầu yêu cầu tải. Kiểm tra danh sách tải của trình duyệt.</p>}
                 {['expired', 'cancelled', 'failed'].includes(state) && job?.errorCode !== 'YOUTUBE_BOT_VERIFICATION_REQUIRED' && (
                   <p className="muted terminal-state">
@@ -334,11 +353,6 @@ export default function Home({ session }: { session: Session }) {
         {ad && <Advertising ad={ad} csrf={session.csrf} />}
         <HomeGuide photoEnabled={photoEnabled} />
       </main>
-      {sponsor && (
-        <div className="sponsor-box studio-sponsor">
-          <Advertising ad={sponsor} csrf={session.csrf} onClose={() => setSponsor(null)} />
-        </div>
-      )}
     </>
   );
 }

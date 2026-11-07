@@ -4,6 +4,7 @@ import { names } from '../lib/platforms';
 import type { Session } from '../types';
 import AdminSupport from '../components/AdminSupport';
 import AdminFeedback from '../components/AdminFeedback';
+import AdminCampaignEditor, { placements, type CampaignDraft } from '../components/AdminCampaignEditor';
 type AdStatistics = { window: { from: string; to: string; timezone: 'UTC' }; rows: { campaignId: string; title: string; impressions: number; clicks: number; ctrPercent: number | null }[] };
 export default function Admin({ session }: { session: Session }) {
   const [logged, setLogged] = useState(false);
@@ -14,7 +15,7 @@ export default function Admin({ session }: { session: Session }) {
   const [dashboard, setDashboard] = useState<any>(null);
   const [settings, setSettings] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [draft, setDraft] = useState<any>(null);
+  const [draft, setDraft] = useState<CampaignDraft | null>(null);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
   const [statistics, setStatistics] = useState<AdStatistics | null>(null);
@@ -147,7 +148,7 @@ export default function Admin({ session }: { session: Session }) {
     e.preventDefault();
     await mutate('admin/settings', 'PUT', settings, 'save', () => setNotice('Đã lưu cấu hình.'));
   }
-  const fresh = () => ({
+  const fresh = (): CampaignDraft => ({
     title: '',
     imageUrl: '',
     targetUrl: '',
@@ -160,6 +161,7 @@ export default function Admin({ session }: { session: Session }) {
   });
   async function saveCampaign(e: React.FormEvent) {
     e.preventDefault();
+    if (!draft) return;
     const { id, ...rest } = draft;
     await mutate(`admin/campaigns${id ? '/' + id : ''}`, id ? 'PUT' : 'POST', {
       ...rest, imageUrl: rest.imageUrl || null,
@@ -437,15 +439,15 @@ export default function Admin({ session }: { session: Session }) {
           {tab === 'campaigns' && (
             <>
               <div className="row-heading">
-                <h2>Chiến dịch tài trợ</h2>
+                <div><h2>Vị trí quảng cáo</h2><p className="muted">Quản lý banner trang chủ và tài trợ khi chuẩn bị MP4.</p></div>
                 <button className="primary" ref={createButton} disabled={!!busy} onClick={(e) => { draftOpener.current = e.currentTarget; setNotice(''); setError(''); setDraft(fresh()); }}>
                   + Tạo chiến dịch
                 </button>
               </div>
-              <p className="muted">
-                Impression, click và CTR là thống kê nội bộ; không phải doanh thu hoặc lượt xem
-                YouTube.
-              </p>
+              {draft && <AdminCampaignEditor key={draft.id ?? "new"} draft={draft} update={setDraft}
+                save={saveCampaign} close={() => setDraft(null)} busy={!!busy} titleInput={titleInput} />}
+              <h2 className="campaign-list-title">Chiến dịch và thống kê</h2>
+              <p className="muted">Thống kê nội bộ ghi nhận lượt hiển thị, lượt nhấp và tỷ lệ nhấp trong WED SNAP.</p>
               <form className="ad-window" onSubmit={(e) => { e.preventDefault(); void loadStatistics(fromInput.trim(), toInput.trim()); }}>
                 <label>Từ (ISO có múi giờ)<input type="text" maxLength={64} placeholder="2026-01-01T00:00:00Z" value={fromInput} onChange={(e) => setFromInput(e.target.value)} /></label>
                 <label>Đến (ISO có múi giờ)<input type="text" maxLength={64} placeholder="2026-01-02T00:00:00Z" value={toInput} onChange={(e) => setToInput(e.target.value)} /></label>
@@ -463,8 +465,8 @@ export default function Admin({ session }: { session: Session }) {
                     <tr>
                       <th>Chiến dịch</th>
                       <th>Vị trí</th>
-                      <th>Impression</th>
-                      <th>Click / CTR</th>
+                      <th>Lượt hiển thị</th>
+                      <th>Lượt nhấp / CTR</th>
                       <th>Trạng thái</th>
                       <th>Thao tác</th>
                     </tr>
@@ -476,7 +478,7 @@ export default function Admin({ session }: { session: Session }) {
                       return (
                         <tr key={c.id}>
                           <td>{c.title}</td>
-                          <td>{c.placement}</td>
+                          <td>{placements[c.placement as keyof typeof placements]?.name ?? c.placement}</td>
                           <td>{row ? row.impressions : '-'}</td>
                           <td>
                             {row ? row.clicks : '-'} / {row?.ctrPercent == null ? '-' : row.ctrPercent.toFixed(1) + '%'}
@@ -519,91 +521,6 @@ export default function Admin({ session }: { session: Session }) {
                   </tbody>
                 </table>
               </div>
-              {draft && (
-                <form className="campaign-form" onSubmit={saveCampaign}>
-                  <h2>{draft.id ? 'Sửa chiến dịch' : 'Chiến dịch mới'}</h2>
-                  <div className="settings-grid">
-                    {[
-                      ['title', 'Tiêu đề', 'text'],
-                      ['targetUrl', 'URL đích HTTPS', 'url'],
-                      ['imageUrl', 'URL banner HTTPS (tùy chọn)', 'url'],
-                      ['weight', 'Trọng số', 'number'],
-                    ].map(([key, label, type]) => (
-                      <label key={key}>
-                        {label}
-                        <input
-                          type={type}
-                          ref={key === 'title' ? titleInput : undefined}
-                          required={key !== 'imageUrl'}
-                          value={draft[key]}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              [key]: type === 'number' ? Number(e.target.value) : e.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    ))}
-                    <label>
-                      Vị trí
-                      <select
-                        value={draft.placement}
-                        onChange={(e) => setDraft({ ...draft, placement: e.target.value })}
-                      >
-                        <option value="banner">Banner</option>
-                        <option value="sponsor">Hộp tài trợ</option>
-                      </select>
-                    </label>
-                    <label>
-                      Loại liên kết
-                      <select
-                        value={draft.linkType}
-                        onChange={(e) => setDraft({ ...draft, linkType: e.target.value })}
-                      >
-                        <option value="sponsored">Tài trợ</option>
-                        <option value="affiliate">Affiliate</option>
-                      </select>
-                    </label>
-                    {[
-                      ['startsAt', 'Bắt đầu'],
-                      ['endsAt', 'Kết thúc'],
-                    ].map(([key, label]) => (
-                      <label key={key}>
-                        {label}
-                        <input
-                          type="datetime-local"
-                          required
-                          value={new Date(
-                            new Date(draft[key]).getTime() -
-                              new Date(draft[key]).getTimezoneOffset() * 60000,
-                          )
-                            .toISOString()
-                            .slice(0, 16)}
-                          onChange={(e) => {
-                            if (e.target.value)
-                              setDraft({ ...draft, [key]: new Date(e.target.value).toISOString() });
-                          }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                  <label className="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={draft.enabled}
-                      onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
-                    />
-                    Bật chiến dịch trong lịch chạy
-                  </label>
-                  <div className="form-actions">
-                    <button className="primary" disabled={!!busy}>Lưu chiến dịch</button>
-                    <button type="button" className="secondary" onClick={() => setDraft(null)}>
-                      Đóng
-                    </button>
-                  </div>
-                </form>
-              )}
             </>
           )}
         </>

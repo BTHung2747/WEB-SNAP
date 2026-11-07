@@ -1,15 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import type { Ad } from '../types';
-import Icon from './Icon';
+export function AdCreative({ title, imageUrl, link }: Pick<Ad, 'title' | 'imageUrl'> & {
+  link?: { url: string; onClick: () => void };
+}) {
+  return (
+    <>
+      <div className="ad-label">TÀI TRỢ</div>
+      {imageUrl && <img src={imageUrl} alt="" referrerPolicy="no-referrer" />}
+      <div className="ad-copy">
+        <strong>{title}</strong>
+        {link
+          ? <a href={link.url} target="_blank" rel="sponsored noopener noreferrer" onClick={link.onClick}>Xem nội dung tài trợ ↗</a>
+          : <span className="ad-preview-link">Xem nội dung tài trợ ↗</span>}
+      </div>
+    </>
+  );
+}
+
 export default function Advertising({
   ad,
   csrf,
-  onClose,
 }: {
   ad: Ad;
   csrf: string;
-  onClose?: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const sent = useRef(new Set<string>());
@@ -60,32 +74,16 @@ export default function Advertising({
   }, [ad.id, csrf]);
   return (
     <aside ref={ref} className="advert">
-      <div className="ad-label">
-        TÀI TRỢ{' '}
-        {onClose && (
-          <button className="icon-btn" onClick={onClose} aria-label="Đóng tài trợ">
-            <Icon name="close" />
-          </button>
-        )}
-      </div>
-      {ad.imageUrl && <img src={ad.imageUrl} alt="" referrerPolicy="no-referrer" />}
-      <div>
-        <strong>{ad.title}</strong>
-        <a
-          href={ad.targetUrl}
-          target="_blank"
-          rel="sponsored noopener noreferrer"
-          onClick={() => {
+      <AdCreative title={ad.title} imageUrl={ad.imageUrl} link={{
+          url: ad.targetUrl,
+          onClick: () => {
             api('ad-events', csrf, 'POST', {
               id: crypto.randomUUID(),
               campaignId: ad.id,
               type: 'click',
             }).catch(() => {});
-          }}
-        >
-          Xem nội dung tài trợ ↗
-        </a>
-      </div>
+          },
+      }} />
     </aside>
   );
 }
