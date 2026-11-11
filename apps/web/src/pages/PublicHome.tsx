@@ -15,7 +15,7 @@ export default function PublicHome({ error = '' }: { error?: string }) {
         <p role="status">{error || 'Đang kết nối công cụ tải…'}</p>
         {error && <button className="text-btn" onClick={() => location.reload()}>Thử lại</button>}
         <div className="card-note"><Icon name="shield" /> Chỉ tải nội dung bạn sở hữu hoặc được phép sử dụng.</div>
-        <p className="support-note" id="support">Video YouTube, video và ảnh TikTok, âm thanh MP3. Khả năng nhận tác vụ sẽ được xác nhận khi kết nối.</p>
+        <p className="support-note" id="support">TikTok, Facebook, X và YouTube. Trạng thái từng nền tảng sẽ hiện sau khi kết nối.</p>
       </div>
     </section>
     <HomeGuide />

@@ -4,14 +4,22 @@ import StudioReveal from './StudioReveal';
 export function HomeIntro() { return (<div className="intro">
             <p className="eyebrow">Từ đường dẫn đến thiết bị</p>
             <h1>Giữ lại điều<br />{' '}bạn <em>thích.</em></h1>
-            <p className="hero-copy">Tải video TikTok không logo, ảnh TikTok, video YouTube và nhạc MP3.<br />Lưu về điện thoại hay máy tính, với video tới 1080p từ nguồn.</p>
+            <p className="hero-copy">Tải video TikTok, Facebook, X và YouTube tới 1080p theo nguồn. Video TikTok không logo. Tải riêng ảnh TikTok và MP3 khi nguồn hỗ trợ.</p>
             <p className="intro-foot"><Icon name="check" /> Không cần tài khoản. Không ép xem quảng cáo.</p>
             <div className="link-illustration" aria-hidden="true">
               <span><Icon name="link" /><small>LINK</small></span><i /><span className="illustration-media"><Icon name="play" /><small>MEDIA</small></span><i /><span><Icon name="arrow" /><small>TỆP CỦA BẠN</small></span>
             </div>
           </div>); }
 
-export function HomeGuide({ photoEnabled }: { photoEnabled?: boolean }) { return (<><section className="how" id="how">
+export function HomeGuide({ photoEnabled }: { photoEnabled?: boolean }) {
+  const formatSupport = [
+    'Tải MP4 từ video công khai trên TikTok, YouTube, Facebook (gồm Reels) và bài X có một video.',
+    'Video TikTok không dính logo nền tảng và giữ chữ, logo có sẵn của tác giả.',
+    photoEnabled === false ? 'Tải ảnh TikTok hiện chưa được bật.' : 'Tải từng ảnh JPG trong bài ảnh TikTok.',
+    'Có MP3 từ TikTok, Facebook và YouTube khi nguồn hỗ trợ âm thanh. Video tối đa 1080p theo nguồn.',
+    'Mỗi tác vụ chuẩn bị một tệp. Chưa hỗ trợ livestream, playlist và nội dung cần đăng nhập.',
+  ].join(' ');
+  return (<><section className="how" id="how">
           <div className="section-intro">
             <h2>Một link. Ba thao tác.</h2>
           </div>
@@ -20,12 +28,14 @@ export function HomeGuide({ photoEnabled }: { photoEnabled?: boolean }) { return
               {
                 icon: 'link',
                 title: 'Dán đường dẫn',
-                text: 'Sao chép link bài đăng công khai và dán vào ô phía trên.',
+                text: 'Sao chép link công khai từ TikTok, Facebook, X hoặc YouTube rồi dán vào ô phía trên.',
               },
               {
                 icon: 'play',
                 title: 'Chọn nội dung',
-                text: 'Xem thông tin và chọn một chất lượng mà nguồn cung cấp.',
+                text: photoEnabled === false
+                  ? 'Xem trước rồi chọn video hoặc MP3 tùy nội dung nguồn cung cấp.'
+                  : 'Xem trước rồi chọn video, ảnh hoặc MP3 tùy nội dung nguồn cung cấp.',
               },
               {
                 icon: 'arrow',
@@ -52,11 +62,7 @@ export function HomeGuide({ photoEnabled }: { photoEnabled?: boolean }) { return
             {[
               [
                 'Tôi có thể tải loại nội dung nào?',
-                photoEnabled === undefined
-                  ? 'Tải video YouTube, video và từng ảnh TikTok không dính logo nền tảng, hoặc âm thanh MP3 khi có nguồn phù hợp. Giữ nguyên chữ và logo của tác giả. Video tối đa Full HD 1080p từ nguồn; không bảo đảm mọi liên kết đều tải được.'
-                  : photoEnabled
-                  ? 'MP4 công khai có hình và tiếng, từng ảnh JPG trong bài ảnh TikTok và âm thanh MP3 khi có nguồn phù hợp. Mỗi tác vụ chuẩn bị một tệp. Livestream, playlist và nội dung cần đăng nhập chưa được bật.'
-                  : 'Hiện chỉ bật nền tảng đã qua kiểm chứng. MP4 công khai có hình và tiếng, cùng âm thanh MP3 khi có nguồn phù hợp; ảnh, livestream, playlist và nội dung cần đăng nhập chưa được bật.',
+                formatSupport,
               ],
               [
                 'Tệp của tôi được giữ bao lâu?',

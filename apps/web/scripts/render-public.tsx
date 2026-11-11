@@ -9,12 +9,20 @@ const template = await readFile(new URL('../dist/index.html', import.meta.url), 
 if (!template.includes('<div id="root"></div>')) throw new Error('PUBLIC_HTML_ROOT');
 // Effects never execute during renderToString. Any accidental render-time fetch fails.
 globalThis.fetch = () => { throw new Error('BUILD_NETWORK_FORBIDDEN'); };
+const webSiteJsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: site.name,
+  url: `${site.origin}/`,
+}).replace(/</g, '\\u003c');
 const pages = [...publicPages, { path: '/admin', title: 'Quản trị | WED SNAP', description: 'Khu vực quản trị WED SNAP.' }];
 for (const page of pages) {
+  const homePage = page.path === '/';
   const privatePage = page.path === '/admin';
   const head = renderToStaticMarkup(<>
     <title>{page.title}</title><meta name="description" content={page.description} />
     <meta name="robots" content={privatePage ? 'noindex, nofollow' : 'index, follow'} />
+    {homePage && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: webSiteJsonLd }} />}
     {privatePage && <meta name="wed-snap-page" content="admin" />}
     {!privatePage && <><link rel="canonical" href={site.origin + page.path} />
     <meta property="og:type" content="website" /><meta property="og:site_name" content={site.name} />
@@ -27,7 +35,7 @@ for (const page of pages) {
   </>);
   const html = template.replace(/<title>[\s\S]*?<\/title>/, '').replace('</head>', head + '</head>')
     .replace('<div id="root"></div>', `<div id="root">${renderToString(<App pathname={page.path} adminEntry={privatePage} />)}</div>`);
-  const name = page.path === '/' ? 'index' : page.path.slice(1);
+  const name = homePage ? 'index' : page.path.slice(1);
   await writeFile(new URL(`../dist/${name}.html`, import.meta.url), html);
 }
 await writeFile(new URL('../dist/sitemap.xml', import.meta.url), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + publicPages.map(p => `  <url><loc>${site.origin + p.path}</loc></url>`).join('\n') + '\n</urlset>\n');
