@@ -16,12 +16,14 @@ const webSiteJsonLd = JSON.stringify({
   url: `${site.origin}/`,
 }).replace(/</g, '\\u003c');
 const pages = [...publicPages, { path: '/admin', title: 'Quản trị | WED SNAP', description: 'Khu vực quản trị WED SNAP.' }];
+const noindexPath = '/privacy';
 for (const page of pages) {
   const homePage = page.path === '/';
   const privatePage = page.path === '/admin';
+  const robots = privatePage ? 'noindex, nofollow' : page.path === noindexPath ? 'noindex, follow' : 'index, follow';
   const head = renderToStaticMarkup(<>
     <title>{page.title}</title><meta name="description" content={page.description} />
-    <meta name="robots" content={privatePage ? 'noindex, nofollow' : 'index, follow'} />
+    <meta name="robots" content={robots} />
     {homePage && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: webSiteJsonLd }} />}
     {privatePage && <meta name="wed-snap-page" content="admin" />}
     {!privatePage && <><link rel="canonical" href={site.origin + page.path} />
@@ -38,5 +40,6 @@ for (const page of pages) {
   const name = homePage ? 'index' : page.path.slice(1);
   await writeFile(new URL(`../dist/${name}.html`, import.meta.url), html);
 }
-await writeFile(new URL('../dist/sitemap.xml', import.meta.url), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + publicPages.map(p => `  <url><loc>${site.origin + p.path}</loc></url>`).join('\n') + '\n</urlset>\n');
+const sitemapPages = publicPages.filter(page => page.path !== noindexPath);
+await writeFile(new URL('../dist/sitemap.xml', import.meta.url), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + sitemapPages.map(p => `  <url><loc>${site.origin + p.path}</loc></url>`).join('\n') + '\n</urlset>\n');
 console.log(`PUBLIC_HTML_READY pages=${publicPages.length} private=1 buildNetwork=0`);

@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 HOST = 'release.example.invalid'
 CANONICAL = 'https://savlivo.online'
 PUBLIC = ('/', '/privacy', '/terms', '/report', '/ung-ho', '/gop-y')
+PRIVACY = '/privacy'
+ROBOTS_META = {PRIVACY: 'noindex, follow', '/admin': 'noindex, nofollow'}
 MAX_BODY = 256 * 1024
 MAX_TOTAL = 2 * 1024 * 1024
 MAX_REQUESTS = 20 + 28  # Up to20 readiness probes, then28 fixed route cases.
@@ -32,6 +34,7 @@ class Head(HTMLParser):
     def __init__(self):
         super().__init__()
         self.canonicals = []
+        self.robots = []
         self.title = False
         self.text = ''
 
@@ -41,6 +44,8 @@ class Head(HTMLParser):
             self.title = True
         if tag == 'link' and attrs.get('rel') == 'canonical':
             self.canonicals.append(attrs.get('href'))
+        if tag == 'meta' and attrs.get('name') == 'robots':
+            self.robots.append(attrs.get('content'))
 
     def handle_endtag(self, tag):
         if tag == 'title':
@@ -58,7 +63,7 @@ def require(ok, code):
 
 def validate_sitemap(body):
     urls = [node.text for node in ET.fromstring(body).iter('{http://www.sitemaps.org/schemas/sitemap/0.9}loc')]
-    expected = {CANONICAL + path for path in PUBLIC}
+    expected = {CANONICAL + path for path in PUBLIC if path != PRIVACY}
     require(set(urls) == expected and len(urls) == len(set(urls)) and b'lastmod' not in body, 'SITEMAP_URLS')
 
 
@@ -109,6 +114,8 @@ def run():
             head = Head()
             head.feed(body.decode('utf-8'))
             require(head.canonicals == ([] if kind == 'ADMIN' else [CANONICAL + value]) and 'WED SNAP' in head.text, 'HTML_IDENTITY')
+            robots_path = '/admin' if kind == 'ADMIN' else value
+            require(head.robots == [ROBOTS_META.get(robots_path, 'index, follow')], 'HTML_IDENTITY')
             require((b'name="wed-snap-page" content="admin"' in body) == (kind == 'ADMIN'), 'HTML_IDENTITY')
             if kind == 'PUBLIC': require(admin_path.encode() not in body, 'HTML_IDENTITY')
             require(('noindex' in headers.get('X-Robots-Tag', '').lower()) == (kind == 'ADMIN'), 'ROBOTS_HEADER')
